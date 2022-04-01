@@ -1,0 +1,31 @@
+project('sliceloader', 'cpp',
+        default_options : ['cpp_std=c++17'])
+
+realmode_elf = executable(
+  'realmode.elf',
+  files('realmode.S'),
+  link_args: ['-nostdlib', '-no-pie', '-Wl,--build-id=none', '-Wl,-T' + meson.current_source_dir() / 'realmode.lds'],
+)
+
+objcopy = find_program('objcopy')
+
+realmode_bin = custom_target(
+  'realmode.bin',
+  output: 'realmode.bin',
+  input: realmode_elf,
+  command: [objcopy, '-O', 'binary', '--strip-debug', '@INPUT@', '@OUTPUT@'],
+)
+
+# Workaround Meson bug. This is the "dirty, filthy, terrible hack" suggested at
+# https://github.com/mesonbuild/meson/issues/10241#issuecomment-1087964333
+realmode_bin_kludge = custom_target(
+  'realmode.kludge',
+  output: 'realmode_bin_kludge.h',
+  input: realmode_bin,
+  command: ['touch', '@OUTPUT@'],
+)
+
+executable(
+  'runslice',
+  files('runslice.cpp', 'lapic.cpp', 'realmode_blob.S') + [realmode_bin_kludge],
+  cpp_args: ['-DREALMODE_BIN_PATH="' + realmode_bin.full_path() + '"'])

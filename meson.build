@@ -27,5 +27,5 @@ realmode_bin_kludge = custom_target(
 
 executable(
   'runslice',
-  files('runslice.cpp', 'lapic.cpp', 'realmode_blob.S') + [realmode_bin_kludge],
+  files('runslice.cpp', 'acpi.cpp', 'lapic.cpp', 'realmode_blob.S') + [realmode_bin_kludge],
   cpp_args: ['-DREALMODE_BIN_PATH="' + realmode_bin.full_path() + '"'])

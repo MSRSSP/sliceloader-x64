@@ -19,7 +19,7 @@ static void fill_e820_table(const Options& options, boot_params& params)
     static_assert(2 <= E820_MAX_ENTRIES_ZEROPAGE);
 }
 
-static bool read_to_devmem(std::ifstream& file, uint64_t offset, void* dest, size_t size)
+bool read_to_devmem(std::ifstream& file, uint64_t offset, void* dest, size_t size)
 {
     // Linux doesn't permit I/O directly to a mapping of /dev/mem, so we must use a temporary
     // buffer.
@@ -121,8 +121,7 @@ bool load_linux(
     loadaddr_virt += sizeof(*boot_params);
 
 	// ACPI tables.
-	boot_params->acpi_rsdp_addr =
-        build_acpi(loadaddr_phys, loadaddr_virt, options.rambase, options.ramsize, options.apic_ids);
+	boot_params->acpi_rsdp_addr = build_acpi(options, loadaddr_phys, loadaddr_virt);
 
 	// Command line.
     if (options.kernel_cmdline) {

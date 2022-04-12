@@ -9,6 +9,7 @@ struct Options
     const char* kernel_path = nullptr;
     const char* initrd_path = nullptr;
     const char* kernel_cmdline = nullptr;
+    const char* dsdt_path = nullptr;
     uint64_t rambase = 0;
     uint64_t ramsize = 0;
     std::vector<uint32_t> apic_ids;
@@ -41,11 +42,11 @@ bool send_startup_ipi(AutoFd& devmem, uint32_t apic_id, uint64_t startup_pa);
 uint8_t acpi_checksum(void* data, size_t size);
 
 uintptr_t build_acpi(
+    const Options& options,
     uintptr_t& loadaddr_phys,
-    char*& loadaddr_virt,
-    uint64_t rambase,
-    uint64_t ramsize,
-    const std::vector<uint32_t>& apic_ids);
+    char*& loadaddr_virt);
+
+bool read_to_devmem(std::ifstream& file, uint64_t offset, void* dest, size_t size);
 
 bool load_linux(
     const Options& options,

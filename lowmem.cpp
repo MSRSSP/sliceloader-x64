@@ -53,20 +53,17 @@ static void write_mptable(const Options& options, void* vaddr, uintptr_t paddr)
     mpfp->physaddr = paddr + sizeof(*mpfp);
     mpfp->checksum = acpi_checksum(mpfp, sizeof(*mpfp));
 
-    MPConfigHeader* mpt = reinterpret_cast<MPConfigHeader*>(static_cast<char*>(vaddr) + sizeof(*mpfp));
+    MPConfigHeader* mpt = reinterpret_cast<MPConfigHeader*>(mpfp + 1);
     memset(mpt, 0, sizeof(*mpt));
     mpt->signature = MPTABLE_CONFIG_MAGIC;
-    mpt->base_length = sizeof(*mpt) + options.apic_ids.size() * sizeof(MPProcessorEntry);
+    // base_length and checksum are computed at the end
     mpt->spec_rev = 4;
     memset(mpt->oemid, ' ', sizeof(mpt->oemid));
     memset(mpt->prodid, ' ', sizeof(mpt->oemid));
     memcpy(mpt->oemid, "SLICER", 6);
     memcpy(mpt->prodid, "SLICER", 6);
-    mpt->entries = options.apic_ids.size();
     mpt->lapic_addr = 0xfee00000;
-
-    MPProcessorEntry* mpp = reinterpret_cast<MPProcessorEntry*>(mpt + 1);
-
+    mpt->entries = 0;
 
     // Assume uniform CPUs.
     uint16_t family_model_stepping;
@@ -77,23 +74,36 @@ static void write_mptable(const Options& options, void* vaddr, uintptr_t paddr)
         family_model_stepping = eax & 0xfff;
     }
 
-    bool first = true;
-    for (uint32_t apic_id : options.apic_ids)
+    // Emit one processor entry for each CPU.
+    mpt->entries += options.apic_ids.size();
+    MPProcessorEntry* mpp = reinterpret_cast<MPProcessorEntry*>(mpt + 1);
+    for (size_t i = 0; i < options.apic_ids.size(); i++)
     {
-        memset(mpp, 0, sizeof(*mpp));
-        mpp->type = MPEntryType::Processor;
-        mpp->apic_id = apic_id;
-        mpp->apic_ver = 0x14;
-        mpp->cpu_flags = MP_PROCESSOR_ENABLED;
-        if (first) {
-            mpp->cpu_flags |= MP_PROCESSOR_BSP;
-            first = false;
+        mpp[i].type = MPEntryType::Processor;
+        mpp[i].apic_id = options.apic_ids[i];
+        mpp[i].apic_ver = 0x14;
+        mpp[i].cpu_flags = MP_PROCESSOR_ENABLED;
+        if (i == 0) {
+            mpp[i].cpu_flags |= MP_PROCESSOR_BSP;
         }
-
-        mpp->cpu_signature = family_model_stepping;
-        mpp->feature_flags = cpu_feature_flags;
+        mpp[i].cpu_signature = family_model_stepping;
+        mpp[i].feature_flags = cpu_feature_flags;
+        memset(&mpp[i].reserved, 0, sizeof(mpp[i].reserved));
     }
 
+    // Emit NMI routing.
+    mpt->entries++;
+    MPInterruptEntry* mpi = reinterpret_cast<MPInterruptEntry*>(mpp + options.apic_ids.size());
+    mpi->type = MPEntryType::LocalInterrupt;
+    mpi->int_type = MPInterruptType::Nmi;
+    mpi->flags = 0;
+    mpi->source_bus = 0;
+    mpi->source_irq = 0;
+    mpi->dest_apic_id = 0xff;
+    mpi->dest_apic_int = 1;
+
+    // Compute total length and checksum.
+    mpt->base_length = reinterpret_cast<char*>(mpi + 1) - reinterpret_cast<char*>(mpt);
     mpt->checksum = acpi_checksum(mpt, mpt->base_length);
 }
 

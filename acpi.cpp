@@ -3,6 +3,8 @@
 #include <cstdint>
 #include <cstdlib>
 #include <cstdio>
+#include <fstream>
+#include <iostream>
 #include <vector>
 
 #include "runslice.h"
@@ -34,11 +36,12 @@ uint8_t acpi_checksum(void* data, size_t size)
     return 0 - sum;
 }
 
-#define FILL_ID(dst, src) \
-    do { \
-        assert(sizeof(dst) == strlen(src)); \
-        memcpy(dst, src, sizeof(dst)); \
-    } while (0)
+template<typename T>
+static inline void copy_id(T& dst, const char* src)
+{
+    assert(sizeof(dst) == strlen(src));
+    memcpy(dst, src, sizeof(dst));
+}
 
 static void fill_header(
     ACPI_TABLE_HEADER* header,
@@ -46,13 +49,13 @@ static void fill_header(
     uint32_t length,
     uint8_t revision)
 {
-    FILL_ID(header->Signature, signature);
+    copy_id(header->Signature, signature);
     header->Length = length;
     header->Revision = revision;
-    FILL_ID(header->OemId, ACPI_OEM_ID);
-    FILL_ID(header->OemTableId, ACPI_OEM_TABLE_ID);
+    copy_id(header->OemId, ACPI_OEM_ID);
+    copy_id(header->OemTableId, ACPI_OEM_TABLE_ID);
     header->OemRevision = 1;
-    FILL_ID(header->AslCompilerId, ASL_COMPILER_ID);
+    copy_id(header->AslCompilerId, ASL_COMPILER_ID);
     header->AslCompilerRevision = 1;
 
     header->Checksum = acpi_checksum(header, length);
@@ -104,30 +107,62 @@ static uintptr_t emit_madt(
 }
 
 uintptr_t build_acpi(
+    const Options& options,
     uintptr_t& loadaddr_phys,
-    char*& loadaddr_virt,
-    uint64_t rambase,
-    uint64_t ramsize,
-    const std::vector<uint32_t>& apic_ids)
+    char*& loadaddr_virt)
 {
     uintptr_t fadt_pa = emit_fadt(loadaddr_phys, loadaddr_virt);
-    uintptr_t madt_pa = emit_madt(loadaddr_phys, loadaddr_virt, apic_ids);
+    uintptr_t madt_pa = emit_madt(loadaddr_phys, loadaddr_virt, options.apic_ids);
+
+    uintptr_t dsdt_pa = 0;
+
+    if (options.dsdt_path != nullptr)
+    {
+        std::ifstream dsdt_file(options.dsdt_path, std::ios::binary | std::ios::in);
+        if (!dsdt_file.is_open()) {
+            perror("Failed to open DSDT AML file");
+            return 0;
+        }
+
+        dsdt_file.seekg(0, std::ios::end);
+        size_t dsdt_size = dsdt_file.tellg();
+
+        if (!read_to_devmem(dsdt_file, 0, loadaddr_virt, dsdt_size)) {
+            perror("Failed to read DSDT AML file");
+            return 0;
+        }
+
+        dsdt_pa = loadaddr_phys;
+
+        loadaddr_virt += dsdt_size;
+        loadaddr_phys += dsdt_size;
+    }
 
     // Emit XSDT
     uintptr_t xsdt_pa = loadaddr_phys;
     acpi_table_xsdt* xsdt = alloc<acpi_table_xsdt>(loadaddr_phys, loadaddr_virt);
+
+    // First entry is included in the size of the struct.
     static_assert(sizeof(xsdt->TableOffsetEntry) == sizeof(xsdt->TableOffsetEntry[0]));
     xsdt->TableOffsetEntry[0] = madt_pa;
+
     alloc<uint64_t>(loadaddr_phys, loadaddr_virt);
     xsdt->TableOffsetEntry[1] = fadt_pa;
+
+    if (dsdt_pa != 0)
+    {
+        alloc<uint64_t>(loadaddr_phys, loadaddr_virt);
+        xsdt->TableOffsetEntry[2] = dsdt_pa;
+    }
+
     fill_header(&xsdt->Header, ACPI_SIG_XSDT, loadaddr_virt - reinterpret_cast<char*>(xsdt), 1);
 
     // Emit RSDP
     uintptr_t rsdp_pa = loadaddr_phys;
     acpi_table_rsdp* rsdp = alloc<acpi_table_rsdp>(loadaddr_phys, loadaddr_virt);
-    FILL_ID(rsdp->Signature, ACPI_SIG_RSDP);
+    copy_id(rsdp->Signature, ACPI_SIG_RSDP);
     rsdp->Checksum = acpi_checksum(rsdp, offsetof(acpi_table_rsdp, Length));
-    FILL_ID(rsdp->OemId, ACPI_OEM_ID);
+    copy_id(rsdp->OemId, ACPI_OEM_ID);
     rsdp->Revision = 2;
     rsdp->Length = sizeof(*rsdp);
     rsdp->XsdtPhysicalAddress = xsdt_pa;

@@ -55,3 +55,38 @@ struct MPProcessorEntry
 
 constexpr uint8_t MP_PROCESSOR_ENABLED = 1;
 constexpr uint8_t MP_PROCESSOR_BSP = 2;
+
+struct MPBusEntry
+{
+    MPEntryType type;
+    uint8_t bus_id;
+    char bus_type[6];
+};
+
+struct MPIOAPICEntry
+{
+    MPEntryType type;
+    uint8_t apic_id;
+    uint8_t apic_ver;
+    uint8_t flags;
+    uint32_t addr;
+};
+
+enum class MPInterruptType : uint8_t
+{
+    Int = 0,
+    Nmi = 1,
+    Smi = 2,
+    ExtInt = 3,
+};
+
+struct MPInterruptEntry
+{
+    MPEntryType type;
+    MPInterruptType int_type;
+    uint16_t flags;
+    uint8_t source_bus;
+    uint8_t source_irq;
+    uint8_t dest_apic_id;
+    uint8_t dest_apic_int;
+};

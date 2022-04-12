@@ -17,7 +17,8 @@
         << "  -cmdline CMD    Kernel command line." << std::endl
         << "  -rambase ADDR   Physical base address of slice memory." << std::endl
         << "  -ramsize SIZE   Size of slice memory." << std::endl
-        << "  -cpus APICIDS   Comma-separated list of APIC IDs." << std::endl;
+        << "  -cpus APICIDS   Comma-separated list of APIC IDs." << std::endl
+        << "  -dsdt FILE      ACPI DSDT AML file." << std::endl;
 
     exit(1);
 }
@@ -79,6 +80,10 @@ static void parse_args(int argc, const char* argv[], Options& options)
             if (++i >= argc)
                 usage();
             parse_cpus(argv[i], options.apic_ids);
+        } else if (strcmp(argv[i], "-dsdt") == 0) {
+            if (++i >= argc)
+                usage();
+            options.dsdt_path = argv[i];
         } else {
             usage();
         }

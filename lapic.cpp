@@ -8,7 +8,6 @@
 #include <cstdio>
 #include <filesystem>
 
-#include "utils.h"
 #include "runslice.h"
 
 static constexpr uint32_t APIC_ID = 0x20;

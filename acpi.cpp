@@ -5,7 +5,6 @@
 #include <cstdio>
 #include <vector>
 
-#include "utils.h"
 #include "runslice.h"
 
 // Just enough ACPI-CA headers to define the tables

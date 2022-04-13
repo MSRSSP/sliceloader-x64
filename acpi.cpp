@@ -63,7 +63,8 @@ static void fill_header(
 
 static uintptr_t emit_fadt(
     uintptr_t& loadaddr_phys,
-    char*& loadaddr_virt)
+    char*& loadaddr_virt,
+    uintptr_t dsdt_pa)
 {
     uintptr_t fadt_pa = loadaddr_phys;
     acpi_table_fadt* fadt = alloc<acpi_table_fadt>(loadaddr_phys, loadaddr_virt);
@@ -71,6 +72,7 @@ static uintptr_t emit_fadt(
     fadt->BootFlags = ACPI_FADT_NO_VGA | ACPI_FADT_NO_CMOS_RTC;
     fadt->Flags = ACPI_FADT_WBINVD | ACPI_FADT_HW_REDUCED;
     fadt->MinorRevision = 4;
+    fadt->XDsdt = dsdt_pa;
 
     fill_header(&fadt->Header, ACPI_SIG_FADT, sizeof(acpi_table_fadt), 6);
 
@@ -111,9 +113,6 @@ uintptr_t build_acpi(
     uintptr_t& loadaddr_phys,
     char*& loadaddr_virt)
 {
-    uintptr_t fadt_pa = emit_fadt(loadaddr_phys, loadaddr_virt);
-    uintptr_t madt_pa = emit_madt(loadaddr_phys, loadaddr_virt, options.apic_ids);
-
     uintptr_t dsdt_pa = 0;
 
     if (options.dsdt_path != nullptr)
@@ -138,22 +137,19 @@ uintptr_t build_acpi(
         loadaddr_phys += dsdt_size;
     }
 
+    uintptr_t fadt_pa = emit_fadt(loadaddr_phys, loadaddr_virt, dsdt_pa);
+    uintptr_t madt_pa = emit_madt(loadaddr_phys, loadaddr_virt, options.apic_ids);
+
     // Emit XSDT
     uintptr_t xsdt_pa = loadaddr_phys;
     acpi_table_xsdt* xsdt = alloc<acpi_table_xsdt>(loadaddr_phys, loadaddr_virt);
 
     // First entry is included in the size of the struct.
     static_assert(sizeof(xsdt->TableOffsetEntry) == sizeof(xsdt->TableOffsetEntry[0]));
-    xsdt->TableOffsetEntry[0] = madt_pa;
+    xsdt->TableOffsetEntry[0] = fadt_pa;
 
     alloc<uint64_t>(loadaddr_phys, loadaddr_virt);
-    xsdt->TableOffsetEntry[1] = fadt_pa;
-
-    if (dsdt_pa != 0)
-    {
-        alloc<uint64_t>(loadaddr_phys, loadaddr_virt);
-        xsdt->TableOffsetEntry[2] = dsdt_pa;
-    }
+    xsdt->TableOffsetEntry[1] = madt_pa;
 
     fill_header(&xsdt->Header, ACPI_SIG_XSDT, loadaddr_virt - reinterpret_cast<char*>(xsdt), 1);
 

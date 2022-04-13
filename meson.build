@@ -7,7 +7,7 @@ realmode_elf = executable(
   link_args: ['-nostdlib', '-no-pie', '-Wl,--build-id=none', '-Wl,-T' + meson.current_source_dir() / 'realmode.lds'],
 )
 
-objcopy = find_program('objcopy')
+objcopy = find_program('objcopy', required: true)
 
 realmode_bin = custom_target(
   'realmode.bin',
@@ -23,6 +23,15 @@ realmode_bin_kludge = custom_target(
   output: 'realmode_bin_kludge.h',
   input: realmode_bin,
   command: ['touch', '@OUTPUT@'],
+)
+
+iasl = find_program('iasl', required: true) # apt install acpica-tools
+
+dsdt_aml = custom_target(
+  output: 'dsdt.aml',
+  input: files('dsdt.asl'),
+  command: [iasl, '-w3', '-we', '-p', '@OUTDIR@/@BASENAME@', '@INPUT@'],
+  build_by_default: true,
 )
 
 executable(

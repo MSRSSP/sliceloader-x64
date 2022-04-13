@@ -15,6 +15,8 @@ struct realmode_header {
     uint64_t kernel_arg;
 } __attribute__((__packed__));
 
+// MPTABLE kludges, only necessary if the guest enables CONFIG_X86_MPPARSE
+#ifdef CONFIG_EMIT_MPTABLE
 static uintptr_t obliterate_mptable_range(void* lowmem, uintptr_t base, uintptr_t size)
 {
     constexpr uint32_t BOGUS_MAGIC = ('-'<<24) | ('P'<<16) | ('M'<<8) | '-';
@@ -106,10 +108,10 @@ static void write_mptable(const Options& options, void* vaddr, uintptr_t paddr)
     mpt->base_length = reinterpret_cast<char*>(mpi + 1) - reinterpret_cast<char*>(mpt);
     mpt->checksum = acpi_checksum(mpt, mpt->base_length);
 }
+#endif
 
 bool lowmem_init(const Options& options, const AutoFd& devmem, uintptr_t kernel_entry, uintptr_t kernel_arg, uintptr_t &boot_ip)
 {
-    constexpr size_t KiB = 0x400;
     constexpr size_t MiB = 0x100000;
 
     void* lowmem = mmap(nullptr, MiB, PROT_READ | PROT_WRITE, MAP_SHARED, devmem, 0);
@@ -130,7 +132,9 @@ bool lowmem_init(const Options& options, const AutoFd& devmem, uintptr_t kernel_
 
     memcpy(static_cast<char*>(lowmem) + REALMODE_BOOT_ADDR, realmode_blob_start, realmode_blob_size);
 
+#ifdef CONFIG_EMIT_MPTABLE
     // Scan through the same memory ranges that Linux does looking for MPTABLE structures.
+    constexpr size_t KiB = 0x400;
     uintptr_t mptable1_pa = obliterate_mptable_range(lowmem, 0, KiB); // bottom 1K
     uintptr_t mptable2_pa = obliterate_mptable_range(lowmem, 639 * KiB, KiB); // top 1K of base RAM
 
@@ -141,6 +145,7 @@ bool lowmem_init(const Options& options, const AutoFd& devmem, uintptr_t kernel_
     uintptr_t mptable_pa = mptable1_pa ? mptable1_pa : (mptable2_pa ? mptable2_pa : FALLBACK_MPTABLE_ADDR);
     printf("Dummy MP table at 0x%lx\n", mptable_pa);
     write_mptable(options, static_cast<char*>(lowmem) + mptable_pa, mptable_pa);
+#endif
 
     munmap(lowmem, MiB);
 

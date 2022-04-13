@@ -92,14 +92,11 @@ static uintptr_t emit_madt(
     madt->Address = APIC_DEFAULT_ADDRESS;
     madt->Flags = 0; // 8259 PICs not present
 
-    uint8_t uid = 0;
     for (uint32_t apic_id : apic_ids) {
-        assert(apic_id <= UINT8_MAX);
-        acpi_madt_local_apic* lapic = alloc<acpi_madt_local_apic>(loadaddr_phys, loadaddr_virt);
-        lapic->Header.Type = ACPI_MADT_TYPE_LOCAL_APIC;
+        acpi_madt_local_x2apic* lapic = alloc<acpi_madt_local_x2apic>(loadaddr_phys, loadaddr_virt);
+        lapic->Header.Type = ACPI_MADT_TYPE_LOCAL_X2APIC;
         lapic->Header.Length = sizeof(*lapic);
-        lapic->ProcessorId = uid++;
-        lapic->Id = apic_id;
+        lapic->LocalApicId = apic_id;
         lapic->LapicFlags = ACPI_MADT_ENABLED;
     }
 

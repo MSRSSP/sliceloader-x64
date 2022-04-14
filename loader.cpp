@@ -136,6 +136,9 @@ bool load_linux(
 	// Load initrd if present.
     if (options.initrd_path)
     {
+        loadaddr_phys = ALIGN_UP(loadaddr_phys, 0x1000);
+        loadaddr_virt = reinterpret_cast<char*>(slice_ram) + (loadaddr_phys - options.rambase);
+
         std::ifstream initrd_file(options.initrd_path, std::ios::binary | std::ios::in);
         if (!initrd_file.is_open()) {
             perror("Failed to open initrd");

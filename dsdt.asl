@@ -13,5 +13,9 @@ DefinitionBlock (
       Name(_HID,"ACPI0007")
       Name(_UID,0)          // Unique ID for Processor 0.
     }
+    Device(PR01) {
+      Name(_HID,"ACPI0007")
+      Name(_UID,1)
+    }
   }
 }

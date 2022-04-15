@@ -145,20 +145,19 @@ bool send_startup_ipi(AutoFd& devmem, uint32_t apic_id, uint64_t startup_pa)
     LocalApic local_apic(apic_regs);
 
     uint8_t local_apic_id = local_apic.read_apic_id();
-    printf("My local APIC ID is %u\n", local_apic_id);
     assert(apic_id != local_apic_id);
 
-    uint32_t a, b, c, d;
-    cpuid(1, 0, a, b, c, d);
-    assert(b >> 24 == local_apic_id);
+    {
+        uint32_t a, b, c, d;
+        cpuid(1, 0, a, b, c, d);
+        assert(b >> 24 == local_apic_id);
+    }
 
-    printf("Send INIT assert\n");
     local_apic.send_init_assert(static_cast<uint8_t>(apic_id));
-    printf("Send INIT deassert\n");
     local_apic.send_init_deassert(static_cast<uint8_t>(apic_id));
-    printf("Send startup IPI\n");
     local_apic.send_startup(static_cast<uint8_t>(apic_id), startup_pa);
-    //printf("Done!\n");
+    usleep(10);
+    local_apic.send_startup(static_cast<uint8_t>(apic_id), startup_pa);
 
     return true;
 }

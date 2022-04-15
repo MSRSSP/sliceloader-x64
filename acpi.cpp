@@ -28,11 +28,11 @@ static inline T* alloc(uintptr_t& loadaddr_phys, char*& loadaddr_virt)
     return t;
 }
 
-uint8_t acpi_checksum(void* data, size_t size)
+uint8_t acpi_checksum(const void* data, size_t size)
 {
     uint8_t sum = 0;
     for (size_t i = 0; i < size; i++)
-        sum += static_cast<uint8_t*>(data)[i];
+        sum += static_cast<const uint8_t*>(data)[i];
     return 0 - sum;
 }
 
@@ -92,11 +92,13 @@ static uintptr_t emit_madt(
     madt->Address = APIC_DEFAULT_ADDRESS;
     madt->Flags = 0; // 8259 PICs not present
 
+    uint32_t uid = 0;
     for (uint32_t apic_id : apic_ids) {
         acpi_madt_local_x2apic* lapic = alloc<acpi_madt_local_x2apic>(loadaddr_phys, loadaddr_virt);
         lapic->Header.Type = ACPI_MADT_TYPE_LOCAL_X2APIC;
         lapic->Header.Length = sizeof(*lapic);
         lapic->LocalApicId = apic_id;
+        lapic->Uid = uid++;
         lapic->LapicFlags = ACPI_MADT_ENABLED;
     }
 
@@ -162,4 +164,75 @@ uintptr_t build_acpi(
     rsdp->ExtendedChecksum = acpi_checksum(rsdp, sizeof(*rsdp));
 
     return rsdp_pa;
+}
+
+bool acpi_get_host_apic_ids(
+    std::vector<uint32_t>& apic_ids)
+{
+    std::ifstream madt_file("/sys/firmware/acpi/tables/APIC", std::ios::binary | std::ios::in);
+    if (!madt_file.is_open()) {
+        perror("Failed to open host MADT file");
+        return false;
+    }
+
+    madt_file.seekg(0, std::ios::end);
+    std::vector<char> madt_data(madt_file.tellg());
+    madt_file.seekg(0, std::ios::beg);
+    if (!madt_file.read(madt_data.data(), madt_data.size())) {
+        perror("Failed to read host MADT file");
+        return false;
+    }
+
+    const acpi_table_madt* const madt = reinterpret_cast<acpi_table_madt*>(madt_data.data());
+
+    if (madt_data.size() < sizeof(*madt) ||
+        0 != memcmp(madt->Header.Signature, ACPI_SIG_MADT, sizeof(madt->Header.Signature)) ||
+        madt->Header.Length != madt_data.size() ||
+        0 != acpi_checksum(madt, madt_data.size()))
+    {
+        fprintf(stderr, "Invalid host MADT file\n");
+        return false;
+    }
+
+    apic_ids.clear();
+
+    for (
+        const ACPI_SUBTABLE_HEADER* entry = reinterpret_cast<const ACPI_SUBTABLE_HEADER*>(madt + 1);
+        reinterpret_cast<const char*>(entry) <= madt_data.data() + madt_data.size()
+            && reinterpret_cast<const char*>(entry) + sizeof(*entry) <= madt_data.data() + madt_data.size()
+            && reinterpret_cast<const char*>(entry) + entry->Length <= madt_data.data() + madt_data.size();
+        entry = reinterpret_cast<const ACPI_SUBTABLE_HEADER*>(reinterpret_cast<const char*>(entry) + entry->Length))
+    {
+        switch (entry->Type)
+        {
+        case ACPI_MADT_TYPE_LOCAL_APIC:
+        {
+            const acpi_madt_local_apic* lapic = reinterpret_cast<const acpi_madt_local_apic*>(entry);
+            if (entry->Length != sizeof(*lapic)) {
+                fprintf(stderr, "Invalid host ACPI_MADT_LOCAL_APIC entry\n");
+                return false;
+            } else if (lapic->LapicFlags & ACPI_MADT_ENABLED) {
+                apic_ids.push_back(lapic->Id);
+            }
+            break;
+        }
+
+        case ACPI_MADT_TYPE_LOCAL_X2APIC:
+        {
+            const acpi_madt_local_x2apic* x2apic = reinterpret_cast<const acpi_madt_local_x2apic*>(entry);
+            if (entry->Length != sizeof(*x2apic)) {
+                fprintf(stderr, "Invalid host ACPI_MADT_LOCAL_X2APIC entry\n");
+                return false;
+            } else if (x2apic->LapicFlags & ACPI_MADT_ENABLED) {
+                apic_ids.push_back(x2apic->LocalApicId);
+            }
+            break;
+        }
+
+        default:
+            break;
+        }
+    }
+
+    return true;
 }

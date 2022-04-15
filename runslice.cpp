@@ -1,5 +1,6 @@
 #include <fcntl.h>
 #include <sys/mman.h>
+#include <algorithm>
 #include <cassert>
 #include <cstring>
 #include <iostream>
@@ -24,6 +25,55 @@
     exit(1);
 }
 
+static bool validate_apic_ids(const std::vector<uint32_t>& slice_ids)
+{
+    std::vector<uint32_t> host_ids;
+    if (!acpi_get_host_apic_ids(host_ids))
+        return false;
+
+    // Assume we're on a uniprocessor (!!). Get the local APIC ID.
+    uint32_t bsp_apic_id = UINT32_MAX;
+    {
+        uint32_t max_cpuid_leaf, a, b, c, d;
+        cpuid(0, 0, max_cpuid_leaf, b, c, d);
+
+        assert(max_cpuid_leaf >= 0xb);
+        cpuid(0xb, 0, a, b, c, bsp_apic_id);
+
+        if (max_cpuid_leaf >= 0x1f)
+        {
+            cpuid(0x1f, 0, a, b, c, d);
+            assert(d == bsp_apic_id);
+        }
+    }
+
+    // Print the host APIC IDs.
+    std::cout << "Host APIC IDs: ";
+    for (uint32_t id : host_ids) {
+        std::cout << id << (id == bsp_apic_id ? "(BSP) " : " ");
+    }
+    std::cout << std::endl;
+
+    assert(std::find(host_ids.begin(), host_ids.end(), bsp_apic_id) != host_ids.end());
+
+    // Check that the slice IDs are valid, and not duplicated.
+    for (uint32_t id : slice_ids) {
+        if (id == bsp_apic_id) {
+            fprintf(stderr, "Error: APIC ID %u is the BSP\n", id);
+            return false;
+        }
+        assert(id != UINT32_MAX);
+        auto it = std::find(host_ids.begin(), host_ids.end(), id);
+        if (it == host_ids.end()) {
+            fprintf(stderr, "Error: APIC ID %u duplicated or not present\n", id);
+            return false;
+        }
+        *it = UINT32_MAX; // mark invalid to catch duplicates
+    }
+
+    return true;
+}
+
 void Options::validate()
 {
     if (kernel_path == nullptr)
@@ -40,6 +90,8 @@ void Options::validate()
         usage("Low memory must be page-aligned");
     if (apic_ids.empty())
         usage("APIC IDs are required");
+    if (!validate_apic_ids(apic_ids))
+        usage("Invalid APIC IDs");
 }
 
 static void parse_cpus(const char* str, std::vector<uint32_t>& apic_ids)

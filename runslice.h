@@ -40,12 +40,15 @@ static inline void cpuid(uint32_t eax, uint32_t ecx, uint32_t& a, uint32_t& b, u
 
 bool send_startup_ipi(AutoFd& devmem, uint32_t apic_id, uint64_t startup_pa);
 
-uint8_t acpi_checksum(void* data, size_t size);
+uint8_t acpi_checksum(const void* data, size_t size);
 
 uintptr_t build_acpi(
     const Options& options,
     uintptr_t& loadaddr_phys,
     char*& loadaddr_virt);
+
+bool acpi_get_host_apic_ids(
+    std::vector<uint32_t>& apic_ids);
 
 bool read_to_devmem(std::ifstream& file, uint64_t offset, void* dest, size_t size);
 

@@ -94,16 +94,19 @@ static uint64_t read_apic_base()
     AutoFd devmsr;
     for (const auto& entry : it)
     {
-        if (devmsr >= 0)
+        if (entry.is_directory())
         {
-            fprintf(stderr, "Error: multiple CPUs found. We only support uniprocessor.\n");
-            return 0;
-        }
+            if (devmsr >= 0)
+            {
+                fprintf(stderr, "Error: multiple CPUs found. We only support uniprocessor.\n");
+                return 0;
+            }
 
-        devmsr = open((entry.path().string() + "/msr").c_str(), O_RDWR);
-        if (devmsr < 0) {
-            perror("Failed to open /dev/cpu/*/msr");
-            return 0;
+            devmsr = open((entry.path().string() + "/msr").c_str(), O_RDWR);
+            if (devmsr < 0) {
+                perror("Failed to open /dev/cpu/*/msr");
+                return 0;
+            }
         }
     }
 

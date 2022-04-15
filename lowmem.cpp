@@ -7,7 +7,6 @@
 #include "runslice.h"
 
 extern "C" char realmode_blob_start[];
-extern "C" size_t realmode_blob_size;
 
 struct realmode_header {
     uint64_t reserved;
@@ -120,17 +119,14 @@ bool lowmem_init(const Options& options, const AutoFd& devmem, uintptr_t kernel_
         return false;
     }
 
-    // Address of physical memory to steal for our realmode blob.
-    // TODO: try to allocate this more safely? It can be anywhere in low memory.
-    constexpr uintptr_t REALMODE_BOOT_ADDR = 0x6000;
-
     struct realmode_header* realmode_header = reinterpret_cast<struct realmode_header*>(realmode_blob_start);
     assert(realmode_blob_size > sizeof(*realmode_header));
     assert(realmode_header->kernel_entry == 0x5c3921544fd4ae2d);
     realmode_header->kernel_entry = kernel_entry;
     realmode_header->kernel_arg = kernel_arg;
 
-    memcpy(static_cast<char*>(lowmem) + REALMODE_BOOT_ADDR, realmode_blob_start, realmode_blob_size);
+    memcpy(static_cast<char*>(lowmem) + options.lowmem, realmode_blob_start, realmode_blob_size);
+    boot_ip = options.lowmem;
 
 #ifdef CONFIG_EMIT_MPTABLE
     // Scan through the same memory ranges that Linux does looking for MPTABLE structures.
@@ -149,7 +145,8 @@ bool lowmem_init(const Options& options, const AutoFd& devmem, uintptr_t kernel_
 
     munmap(lowmem, MiB);
 
-    boot_ip = REALMODE_BOOT_ADDR;
+    printf("Copied real-mode boot code to 0x%lx-%lx. Will enter kernel at %lx.\n",
+           options.lowmem, options.lowmem + realmode_blob_size, kernel_entry);
 
     return true;
 }

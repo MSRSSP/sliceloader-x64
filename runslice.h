@@ -12,6 +12,7 @@ struct Options
     const char* dsdt_path = nullptr;
     uint64_t rambase = 0;
     uint64_t ramsize = 0;
+    uint64_t lowmem = 0x6000;
     std::vector<uint32_t> apic_ids;
 
     void validate();
@@ -55,3 +56,5 @@ bool load_linux(
     uintptr_t& kernel_entry_arg);
 
 bool lowmem_init(const Options& options, const AutoFd& devmem, uintptr_t kernel_entry, uintptr_t kernel_arg, uintptr_t &boot_ip);
+
+extern "C" const size_t realmode_blob_size;

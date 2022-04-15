@@ -17,6 +17,7 @@
         << "  -cmdline CMD    Kernel command line." << std::endl
         << "  -rambase ADDR   Physical base address of slice memory." << std::endl
         << "  -ramsize SIZE   Size of slice memory." << std::endl
+        << "  -lowmem ADDR    Physical address of low memory used for boot." << std::endl
         << "  -cpus APICIDS   Comma-separated list of APIC IDs." << std::endl
         << "  -dsdt FILE      ACPI DSDT AML file." << std::endl;
 
@@ -33,6 +34,10 @@ void Options::validate()
         usage("RAM base must be page-aligned");
     if (ramsize % 0x1000 != 0)
         usage("RAM size must be page-aligned");
+    if (lowmem > 640 * 1024 - realmode_blob_size)
+        usage("Low memory must fit below 640K");
+    if (lowmem % 0x1000 != 0)
+        usage("Low memory must be page-aligned");
     if (apic_ids.empty())
         usage("APIC IDs are required");
 }
@@ -76,6 +81,10 @@ static void parse_args(int argc, const char* argv[], Options& options)
             if (++i >= argc)
                 usage();
             options.ramsize = strtoul(argv[i], nullptr, 0);
+        } else if (strcmp(argv[i], "-lowmem") == 0) {
+            if (++i >= argc)
+                usage();
+            options.lowmem = strtoul(argv[i], nullptr, 0);
         } else if (strcmp(argv[i], "-cpus") == 0) {
             if (++i >= argc)
                 usage();
@@ -85,7 +94,7 @@ static void parse_args(int argc, const char* argv[], Options& options)
                 usage();
             options.dsdt_path = argv[i];
         } else {
-            usage();
+            usage("Unrecognised option");
         }
     }
 }

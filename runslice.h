@@ -61,3 +61,5 @@ bool load_linux(
 bool lowmem_init(const Options& options, const AutoFd& devmem, uintptr_t kernel_entry, uintptr_t kernel_arg, uintptr_t &boot_ip);
 
 extern "C" const size_t realmode_blob_size;
+
+uint32_t get_local_apic_id();

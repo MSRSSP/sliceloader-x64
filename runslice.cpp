@@ -25,27 +25,34 @@
     exit(1);
 }
 
+// XXX: This assumes we're on a uniprocessor (!!)
+uint32_t get_local_apic_id()
+{
+    uint32_t apic_id = UINT32_MAX;
+    {
+        uint32_t max_cpuid_leaf, a, b, c, d;
+        cpuid(0, 0, max_cpuid_leaf, b, c, d);
+
+        assert(max_cpuid_leaf >= 0xb);
+        cpuid(0xb, 0, a, b, c, apic_id);
+
+        if (max_cpuid_leaf >= 0x1f)
+        {
+            cpuid(0x1f, 0, a, b, c, d);
+            assert(d == apic_id);
+        }
+    }
+
+    return apic_id;
+}
+
 static bool validate_apic_ids(const std::vector<uint32_t>& slice_ids)
 {
     std::vector<uint32_t> host_ids;
     if (!acpi_get_host_apic_ids(host_ids))
         return false;
 
-    // Assume we're on a uniprocessor (!!). Get the local APIC ID.
-    uint32_t bsp_apic_id = UINT32_MAX;
-    {
-        uint32_t max_cpuid_leaf, a, b, c, d;
-        cpuid(0, 0, max_cpuid_leaf, b, c, d);
-
-        assert(max_cpuid_leaf >= 0xb);
-        cpuid(0xb, 0, a, b, c, bsp_apic_id);
-
-        if (max_cpuid_leaf >= 0x1f)
-        {
-            cpuid(0x1f, 0, a, b, c, d);
-            assert(d == bsp_apic_id);
-        }
-    }
+    uint32_t bsp_apic_id = get_local_apic_id();
 
     // Print the host APIC IDs.
     std::cout << "Host APIC IDs: ";

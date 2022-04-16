@@ -146,7 +146,7 @@ bool lowmem_init(const Options& options, const AutoFd& devmem, uintptr_t kernel_
     munmap(lowmem, MiB);
 
     printf("Copied real-mode boot code to 0x%lx-%lx. Will enter kernel at %lx.\n",
-           options.lowmem, options.lowmem + realmode_blob_size, kernel_entry);
+           options.lowmem, options.lowmem + realmode_blob_size - 1, kernel_entry);
 
     return true;
 }

@@ -22,13 +22,16 @@ class AutoFd
 {
 public:
     AutoFd() : m_fd(-1) {}
+    AutoFd(AutoFd&& other) : m_fd(other.m_fd) { other.m_fd = -1; }
     AutoFd(int fd) : m_fd(fd) {}
-    ~AutoFd() { if (m_fd >= 0) close(m_fd); }
+    ~AutoFd() { reset(); }
     operator int() const { return m_fd; }
-    int operator= (int fd) { if (m_fd >= 0) close(m_fd); m_fd = fd; return m_fd; }
+    int operator= (int fd) { reset(); return (m_fd = fd); }
+    void operator= (AutoFd&& other) { reset(); m_fd = other.m_fd; other.m_fd = -1; }
 
 private:
     int m_fd;
+    void reset() { if (m_fd >= 0) close(m_fd); m_fd = -1; }
 };
 
 static inline void cpuid(uint32_t eax, uint32_t ecx, uint32_t& a, uint32_t& b, uint32_t& c, uint32_t& d)

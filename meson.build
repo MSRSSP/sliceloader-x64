@@ -19,7 +19,6 @@ realmode_bin = custom_target(
 # Workaround Meson bug. This is the "dirty, filthy, terrible hack" suggested at
 # https://github.com/mesonbuild/meson/issues/10241#issuecomment-1087964333
 realmode_bin_kludge = custom_target(
-  'realmode.kludge',
   output: 'realmode_bin_kludge.h',
   input: realmode_bin,
   command: ['touch', '@OUTPUT@'],
@@ -45,4 +44,5 @@ executable(
     'runslice.cpp',
   ) + [realmode_bin_kludge],
   cpp_args: ['-DREALMODE_BIN_PATH="' + realmode_bin.full_path() + '"'],
+  link_args: ['-z', 'noexecstack'],
 )

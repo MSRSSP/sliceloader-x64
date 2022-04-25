@@ -107,6 +107,25 @@ static uintptr_t emit_madt(
     return madt_pa;
 }
 
+static uintptr_t emit_mcfg(
+    uintptr_t& loadaddr_phys,
+    char*& loadaddr_virt)
+{
+    uintptr_t mcfg_pa = loadaddr_phys;
+    acpi_table_mcfg* mcfg = alloc<acpi_table_mcfg>(loadaddr_phys, loadaddr_virt);
+
+    acpi_mcfg_allocation* mcfg_entry = alloc<acpi_mcfg_allocation>(loadaddr_phys, loadaddr_virt);
+
+    mcfg_entry->Address = 0xe0000000;
+    mcfg_entry->PciSegment = 0;
+    mcfg_entry->StartBusNumber = 0;
+    mcfg_entry->EndBusNumber = 0xff;
+
+    fill_header(&mcfg->Header, ACPI_SIG_MCFG, loadaddr_virt - reinterpret_cast<char*>(mcfg), 1);
+
+    return mcfg_pa;
+}
+
 uintptr_t build_acpi(
     const Options& options,
     uintptr_t& loadaddr_phys,
@@ -138,17 +157,22 @@ uintptr_t build_acpi(
 
     uintptr_t fadt_pa = emit_fadt(loadaddr_phys, loadaddr_virt, dsdt_pa);
     uintptr_t madt_pa = emit_madt(loadaddr_phys, loadaddr_virt, options.apic_ids);
+    uintptr_t mcfg_pa = emit_mcfg(loadaddr_phys, loadaddr_virt);
 
     // Emit XSDT
     uintptr_t xsdt_pa = loadaddr_phys;
     acpi_table_xsdt* xsdt = alloc<acpi_table_xsdt>(loadaddr_phys, loadaddr_virt);
 
     // First entry is included in the size of the struct.
+    int i = 0;
     static_assert(sizeof(xsdt->TableOffsetEntry) == sizeof(xsdt->TableOffsetEntry[0]));
-    xsdt->TableOffsetEntry[0] = fadt_pa;
+    xsdt->TableOffsetEntry[i++] = fadt_pa;
 
     alloc<uint64_t>(loadaddr_phys, loadaddr_virt);
-    xsdt->TableOffsetEntry[1] = madt_pa;
+    xsdt->TableOffsetEntry[i++] = madt_pa;
+
+    alloc<uint64_t>(loadaddr_phys, loadaddr_virt);
+    xsdt->TableOffsetEntry[i++] = mcfg_pa;
 
     fill_header(&xsdt->Header, ACPI_SIG_XSDT, loadaddr_virt - reinterpret_cast<char*>(xsdt), 1);
 

@@ -33,8 +33,10 @@ DefinitionBlock (
     Device(PCI0)
     {
       Name(_HID, EisaId("PNP0A08"))
+      Name(_CID, EisaId("PNP0A03"))
       Name(_ADR, 0x00000000)
       Name(_BBN, 0)
+      Name(_UID, 0)
       Name(_CRS, ResourceTemplate() {
         WordBusNumber (ResourceProducer, MinFixed, MaxFixed, PosDecode,
             0x0000,             // Granularity
@@ -42,7 +44,7 @@ DefinitionBlock (
             0x00FF,             // Range Maximum
             0x0000,             // Translation Offset
             0x0100)             // Length
-        DWordIO (ResourceProducer, MinFixed, MaxFixed, PosDecode, EntireRange,
+        WordIO (ResourceProducer, MinFixed, MaxFixed, PosDecode, EntireRange,
             0x00000000,         // Granularity
             0x00000000,         // Range Minimum
             0x00000CF7,         // Range Maximum
@@ -55,7 +57,7 @@ DefinitionBlock (
             0x01,               // Alignment
             0x08,               // Length
             )
-        DWordIO (ResourceProducer, MinFixed, MaxFixed, PosDecode, EntireRange,
+        WordIO (ResourceProducer, MinFixed, MaxFixed, PosDecode, EntireRange,
             0x00000000,         // Granularity
             0x00000D00,         // Range Minimum
             0x0000FFFF,         // Range Maximum

@@ -70,7 +70,7 @@ static uintptr_t emit_fadt(
     acpi_table_fadt* fadt = alloc<acpi_table_fadt>(loadaddr_phys, loadaddr_virt);
 
     fadt->BootFlags = ACPI_FADT_NO_VGA | ACPI_FADT_NO_CMOS_RTC;
-    fadt->Flags = ACPI_FADT_WBINVD | ACPI_FADT_HW_REDUCED;
+    fadt->Flags = ACPI_FADT_WBINVD | ACPI_FADT_HW_REDUCED | ACPI_FADT_APIC_PHYSICAL;
     fadt->MinorRevision = 4;
     fadt->XDsdt = dsdt_pa;
 

@@ -71,110 +71,12 @@ DefinitionBlock (
             0x00000000,         // Translation Offset
             0x00020000,         // Length
             ,, , AddressRangeMemory, TypeStatic)
-        DWordMemory (ResourceProducer, PosDecode, MinFixed, MaxFixed, Cacheable, ReadWrite,
-            0x00000000,         // Granularity
-            0x000C0000,         // Range Minimum
-            0x000C3FFF,         // Range Maximum
-            0x00000000,         // Translation Offset
-            0x00004000,         // Length
-            ,, , AddressRangeMemory, TypeStatic)
-        DWordMemory (ResourceProducer, PosDecode, MinFixed, MaxFixed, Cacheable, ReadWrite,
-            0x00000000,         // Granularity
-            0x000C4000,         // Range Minimum
-            0x000C7FFF,         // Range Maximum
-            0x00000000,         // Translation Offset
-            0x00004000,         // Length
-            ,, , AddressRangeMemory, TypeStatic)
-        DWordMemory (ResourceProducer, PosDecode, MinFixed, MaxFixed, Cacheable, ReadWrite,
-            0x00000000,         // Granularity
-            0x000C8000,         // Range Minimum
-            0x000CBFFF,         // Range Maximum
-            0x00000000,         // Translation Offset
-            0x00004000,         // Length
-            ,, , AddressRangeMemory, TypeStatic)
-        DWordMemory (ResourceProducer, PosDecode, MinFixed, MaxFixed, Cacheable, ReadWrite,
-            0x00000000,         // Granularity
-            0x000CC000,         // Range Minimum
-            0x000CFFFF,         // Range Maximum
-            0x00000000,         // Translation Offset
-            0x00004000,         // Length
-            ,, , AddressRangeMemory, TypeStatic)
-        DWordMemory (ResourceProducer, PosDecode, MinFixed, MaxFixed, Cacheable, ReadWrite,
-            0x00000000,         // Granularity
-            0x000D0000,         // Range Minimum
-            0x000D3FFF,         // Range Maximum
-            0x00000000,         // Translation Offset
-            0x00004000,         // Length
-            ,, , AddressRangeMemory, TypeStatic)
-        DWordMemory (ResourceProducer, PosDecode, MinFixed, MaxFixed, Cacheable, ReadWrite,
-            0x00000000,         // Granularity
-            0x000D4000,         // Range Minimum
-            0x000D7FFF,         // Range Maximum
-            0x00000000,         // Translation Offset
-            0x00004000,         // Length
-            ,, _Y06, AddressRangeMemory, TypeStatic)
-        DWordMemory (ResourceProducer, PosDecode, MinFixed, MaxFixed, Cacheable, ReadWrite,
-            0x00000000,         // Granularity
-            0x000D8000,         // Range Minimum
-            0x000DBFFF,         // Range Maximum
-            0x00000000,         // Translation Offset
-            0x00004000,         // Length
-            ,, , AddressRangeMemory, TypeStatic)
-        DWordMemory (ResourceProducer, PosDecode, MinFixed, MaxFixed, Cacheable, ReadWrite,
-            0x00000000,         // Granularity
-            0x000DC000,         // Range Minimum
-            0x000DFFFF,         // Range Maximum
-            0x00000000,         // Translation Offset
-            0x00004000,         // Length
-            ,, , AddressRangeMemory, TypeStatic)
-        DWordMemory (ResourceProducer, PosDecode, MinFixed, MaxFixed, Cacheable, ReadWrite,
-            0x00000000,         // Granularity
-            0x000E0000,         // Range Minimum
-            0x000E3FFF,         // Range Maximum
-            0x00000000,         // Translation Offset
-            0x00004000,         // Length
-            ,, , AddressRangeMemory, TypeStatic)
-        DWordMemory (ResourceProducer, PosDecode, MinFixed, MaxFixed, Cacheable, ReadWrite,
-            0x00000000,         // Granularity
-            0x000E4000,         // Range Minimum
-            0x000E7FFF,         // Range Maximum
-            0x00000000,         // Translation Offset
-            0x00004000,         // Length
-            ,, , AddressRangeMemory, TypeStatic)
-        DWordMemory (ResourceProducer, PosDecode, MinFixed, MaxFixed, Cacheable, ReadWrite,
-            0x00000000,         // Granularity
-            0x000E8000,         // Range Minimum
-            0x000EBFFF,         // Range Maximum
-            0x00000000,         // Translation Offset
-            0x00004000,         // Length
-            ,, , AddressRangeMemory, TypeStatic)
-        DWordMemory (ResourceProducer, PosDecode, MinFixed, MaxFixed, Cacheable, ReadWrite,
-            0x00000000,         // Granularity
-            0x000EC000,         // Range Minimum
-            0x000EFFFF,         // Range Maximum
-            0x00000000,         // Translation Offset
-            0x00004000,         // Length
-            ,, , AddressRangeMemory, TypeStatic)
-        DWordMemory (ResourceProducer, PosDecode, MinFixed, MaxFixed, Cacheable, ReadWrite,
-            0x00000000,         // Granularity
-            0x000F0000,         // Range Minimum
-            0x000FFFFF,         // Range Maximum
-            0x00000000,         // Translation Offset
-            0x00010000,         // Length
-            ,, , AddressRangeMemory, TypeStatic)
         DWordMemory (ResourceProducer, PosDecode, MinFixed, MaxFixed, NonCacheable, ReadWrite,
             0x00000000,         // Granularity
-            0x00000000,         // Range Minimum
-            0xDFFFFFFF,         // Range Maximum
+            0xbe800000,         // Range Minimum
+            0xdfffffff,         // Range Maximum
             0x00000000,         // Translation Offset
-            0xE0000000,         // Length
-            ,, , AddressRangeMemory, TypeStatic)
-        QWordMemory (ResourceProducer, PosDecode, MinFixed, MaxFixed, NonCacheable, ReadWrite,
-            0x0000000000000000, // Granularity
-            0x0000000000010000, // Range Minimum
-            0x000000000001FFFF, // Range Maximum
-            0x0000000000000000, // Translation Offset
-            0x0000000000010000, // Length
+            0x21800000,         // Length
             ,, , AddressRangeMemory, TypeStatic)
         DWordMemory (ResourceProducer, PosDecode, MinFixed, MaxFixed, NonCacheable, ReadWrite,
             0x00000000,         // Granularity
@@ -183,10 +85,13 @@ DefinitionBlock (
             0x00000000,         // Translation Offset
             0x01800000,         // Length
             ,, , AddressRangeMemory, TypeStatic)
-
-        Memory32Fixed(ReadWrite, 0xbe800000, 0x21800000)
-        ExtendedMemory(ResourceProducer,PosDecode,MinFixed,MaxFixed,Prefetchable,
-          ReadWrite,0x0,0x1c00000000,0x1fffffffff,0x0,0x400000000,,,)
+        ExtendedMemory (ResourceProducer, PosDecode, MinFixed, MaxFixed, Prefetchable, ReadWrite,
+            0x0,
+            0x1c00000000,
+            0x1fffffffff,
+            0x0,
+            0x400000000
+            ,,,)
       })
     }
 

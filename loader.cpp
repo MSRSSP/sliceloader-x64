@@ -8,15 +8,17 @@
 static void fill_e820_table(const Options& options, boot_params& params)
 {
     constexpr int E820_RAM = 1;
+    constexpr int E820_RESERVED = 2;
 
     // XXX: In order to boot secondary CPUs, Linux needs a small region of real-mode (<1MiB PA)
     // memory, allocated on boot by reserve_real_mode(). We also happen to know that after boot,
     // Linux unconditionally reserves (and thus avoids touching) the first 1MiB of memory, so we
     // should be safe to use it here.
     params.e820_table[0] = { .addr = 0, .size = 639 * 1024, .type = E820_RAM };
-    params.e820_table[1] = { .addr = options.rambase, .size = options.ramsize, .type = E820_RAM };
-    params.e820_entries = 2;
-    static_assert(2 <= E820_MAX_ENTRIES_ZEROPAGE);
+    params.e820_table[1] = { .addr = 0xe0000000, .size = 0x20000000, .type = E820_RESERVED };
+    params.e820_table[2] = { .addr = options.rambase, .size = options.ramsize, .type = E820_RAM };
+    params.e820_entries = 3;
+    static_assert(3 <= E820_MAX_ENTRIES_ZEROPAGE);
 }
 
 bool read_to_devmem(std::ifstream& file, uint64_t offset, void* dest, size_t size)

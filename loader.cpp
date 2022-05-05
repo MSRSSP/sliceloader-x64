@@ -5,17 +5,20 @@
 #include "linuxboot.h"
 #include "runslice.h"
 
-static void fill_e820_table(const Options& options, boot_params& params)
+static void fill_e820_table(const Options& options, uintptr_t mmconfig_base, boot_params& params)
 {
     constexpr int E820_RAM = 1;
     constexpr int E820_RESERVED = 2;
+
+    // Size of the PCIe MMCONFIG region, assuming that it is contiguous for all buses.
+    constexpr size_t MMCONFIG_SIZE = 0x20000000;
 
     // XXX: In order to boot secondary CPUs, Linux needs a small region of real-mode (<1MiB PA)
     // memory, allocated on boot by reserve_real_mode(). We also happen to know that after boot,
     // Linux unconditionally reserves (and thus avoids touching) the first 1MiB of memory, so we
     // should be safe to use it here.
     params.e820_table[0] = { .addr = 0, .size = 639 * 1024, .type = E820_RAM };
-    params.e820_table[1] = { .addr = 0xe0000000, .size = 0x20000000, .type = E820_RESERVED };
+    params.e820_table[1] = { .addr = mmconfig_base, .size = MMCONFIG_SIZE, .type = E820_RESERVED };
     params.e820_table[2] = { .addr = options.rambase, .size = options.ramsize, .type = E820_RAM };
     params.e820_entries = 3;
     static_assert(3 <= E820_MAX_ENTRIES_ZEROPAGE);
@@ -123,7 +126,12 @@ bool load_linux(
     loadaddr_virt += sizeof(*boot_params);
 
 	// ACPI tables.
-	boot_params->acpi_rsdp_addr = build_acpi(options, loadaddr_phys, loadaddr_virt);
+    uintptr_t mmconfig_base = 0;
+	boot_params->acpi_rsdp_addr = build_acpi(options, loadaddr_phys, loadaddr_virt, mmconfig_base);
+    if (boot_params->acpi_rsdp_addr == 0)
+    {
+        return false;
+    }
 
 	// Command line.
     if (options.kernel_cmdline) {
@@ -163,7 +171,7 @@ bool load_linux(
 
 	boot_params->hdr.type_of_loader = 0xff;
 
-    fill_e820_table(options, *boot_params);
+    fill_e820_table(options, mmconfig_base, *boot_params);
 
     return true;
 }

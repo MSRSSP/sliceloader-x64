@@ -48,7 +48,8 @@ uint8_t acpi_checksum(const void* data, size_t size);
 uintptr_t build_acpi(
     const Options& options,
     uintptr_t& loadaddr_phys,
-    char*& loadaddr_virt);
+    char*& loadaddr_virt,
+    uintptr_t& mmconfig_base);
 
 bool acpi_get_host_apic_ids(
     std::vector<uint32_t>& apic_ids);

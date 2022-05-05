@@ -109,19 +109,57 @@ static uintptr_t emit_madt(
 
 static uintptr_t emit_mcfg(
     uintptr_t& loadaddr_phys,
-    char*& loadaddr_virt)
+    char*& loadaddr_virt,
+    uintptr_t& mmconfig_base)
 {
+    std::ifstream mcfg_file("/sys/firmware/acpi/tables/MCFG", std::ios::binary | std::ios::in);
+    if (!mcfg_file.is_open()) {
+        perror("Failed to open host MCFG file");
+        return 0;
+    }
+
+    mcfg_file.seekg(0, std::ios::end);
+    std::vector<char> mcfg_data(mcfg_file.tellg());
+    mcfg_file.seekg(0, std::ios::beg);
+    if (!mcfg_file.read(mcfg_data.data(), mcfg_data.size())) {
+        perror("Failed to read host MCFG file");
+        return 0;
+    }
+
+    const acpi_table_mcfg* const mcfg = reinterpret_cast<acpi_table_mcfg*>(mcfg_data.data());
+
+    if (mcfg_data.size() < sizeof(*mcfg) ||
+        0 != memcmp(mcfg->Header.Signature, ACPI_SIG_MCFG, sizeof(mcfg->Header.Signature)) ||
+        mcfg->Header.Length != mcfg_data.size() ||
+        (mcfg_data.size() - sizeof(*mcfg)) % sizeof(acpi_mcfg_allocation) != 0 ||
+        0 != acpi_checksum(mcfg, mcfg_data.size()))
+    {
+        fprintf(stderr, "Invalid host MCFG file\n");
+        return 0;
+    }
+
+    if (mcfg_data.size() != sizeof(*mcfg) + sizeof(acpi_mcfg_allocation))
+    {
+        fprintf(stderr, "Unsupported: host MCFG with multiple allocations\n");
+        return 0;
+    }
+
+    const acpi_mcfg_allocation* mcfg_entry = reinterpret_cast<const acpi_mcfg_allocation*>(mcfg + 1);
+
+    if (mcfg_entry->PciSegment != 0 || mcfg_entry->StartBusNumber != 0)
+    {
+        fprintf(stderr, "Unsupported: host MCFG with non-zero PCI segment or start bus number\n");
+        return 0;
+    }
+
+    mmconfig_base = mcfg_entry->Address;
+
     uintptr_t mcfg_pa = loadaddr_phys;
-    acpi_table_mcfg* mcfg = alloc<acpi_table_mcfg>(loadaddr_phys, loadaddr_virt);
 
-    acpi_mcfg_allocation* mcfg_entry = alloc<acpi_mcfg_allocation>(loadaddr_phys, loadaddr_virt);
+    memcpy(loadaddr_virt, mcfg_data.data(), mcfg_data.size());
 
-    mcfg_entry->Address = 0xe0000000;
-    mcfg_entry->PciSegment = 0;
-    mcfg_entry->StartBusNumber = 0;
-    mcfg_entry->EndBusNumber = 0xff;
-
-    fill_header(&mcfg->Header, ACPI_SIG_MCFG, loadaddr_virt - reinterpret_cast<char*>(mcfg), 1);
+    loadaddr_phys += mcfg_data.size();
+    loadaddr_virt += mcfg_data.size();
 
     return mcfg_pa;
 }
@@ -129,7 +167,8 @@ static uintptr_t emit_mcfg(
 uintptr_t build_acpi(
     const Options& options,
     uintptr_t& loadaddr_phys,
-    char*& loadaddr_virt)
+    char*& loadaddr_virt,
+    uintptr_t& mmconfig_base)
 {
     uintptr_t dsdt_pa = 0;
 
@@ -157,7 +196,10 @@ uintptr_t build_acpi(
 
     uintptr_t fadt_pa = emit_fadt(loadaddr_phys, loadaddr_virt, dsdt_pa);
     uintptr_t madt_pa = emit_madt(loadaddr_phys, loadaddr_virt, options.apic_ids);
-    uintptr_t mcfg_pa = emit_mcfg(loadaddr_phys, loadaddr_virt);
+    uintptr_t mcfg_pa = emit_mcfg(loadaddr_phys, loadaddr_virt, mmconfig_base);
+    if (mcfg_pa == 0) {
+        return 0;
+    }
 
     // Emit XSDT
     uintptr_t xsdt_pa = loadaddr_phys;

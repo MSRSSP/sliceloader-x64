@@ -4,13 +4,13 @@
 PCI_SEG=0000
 
 # PCIe serial port to be used as console
-PCI_SERIAL_CONSOLE=04:00.0
+PCI_SERIAL_CONSOLE=21:00.0
 
 # Non-SR-IOV PCI devices/functions to assign
 PCI_ASSIGN="$PCI_SERIAL_CONSOLE"
 
 # host PF for SR-IOV -- we'll construct and use a single VF
-SRIOV_HOST="05:00.1"
+SRIOV_HOST="99:00.0"
 
 # MAC address for the VF
 VF_MACADDR="02:22:33:44:55:66"
@@ -86,9 +86,23 @@ for dev in $PCI_ASSIGN; do
   fi
 done
 
-CMDLINE="loglevel=7 noapic apic=debug"
+# enable plenty of debug output, and configure the console
+CMDLINE="loglevel=7 apic=debug"
 CMDLINE="$CMDLINE console=uart,io,$SERIAL_IOPORT_BASE,115200n8"
-CMDLINE="$CMDLINE pci=nobios,norom,nobar,realloc=off,permit_probe_only=$probe_only_arg"
+
+# disable use of the IO-APICs
+CMDLINE="$CMDLINE noapic"
+
+# PCI config:
+# nobios: disable search for legacy PCI BIOS (if not enabled in the kernel config, this prints an unknown option warning)
+# norom,nobar: don't assign bars
+# realloc=off: don't reallocate PCI bridge resources
+# lastbus=0x100: this out-of-bounds valud disables the legacy bus scan in pcibios_fixup_peer_bridges(),
+#                preventing discovery of any PCI buses not exposed via ACPI
+# permit_probe_only: allow-list of configured devices to probe (relies on custom kernel)
+CMDLINE="$CMDLINE pci=nobios,norom,nobar,realloc=off,lastbus=0x100,permit_probe_only=$probe_only_arg"
+
+# instruct our pci-vf-as-pf driver where to find our SR-IOV device, and which VF to use
 CMDLINE="$CMDLINE pci-vf-as-pf.pf=$SRIOV_HOST pci-vf-as-pf.vf=0"
 
 sync; sync; sleep 0.1

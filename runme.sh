@@ -95,6 +95,6 @@ sync; sync; sleep 0.1
 
 set -x
 
-builddir/runslice -rambase 0x180000000 -ramsize 0x40000000 -cpus 4,6 \
+builddir/runslice -rambase 0x180000000 -ramsize 0x40000000 -cpus 1-2 \
   -kernel bzImage -initrd rootfs.cpio.gz -dsdt builddir/dsdt.aml \
   -cmdline "$CMDLINE"

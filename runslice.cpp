@@ -19,7 +19,7 @@
         << "  -rambase ADDR   Physical base address of slice memory." << std::endl
         << "  -ramsize SIZE   Size of slice memory." << std::endl
         << "  -lowmem ADDR    Physical address of low memory used for boot." << std::endl
-        << "  -cpus APICIDS   Comma-separated list of APIC IDs." << std::endl
+        << "  -cpus CPUS      Comma-separated list of CPU ID ranges. e.g.: 1-2,4" << std::endl
         << "  -dsdt FILE      ACPI DSDT AML file." << std::endl;
 
     exit(1);
@@ -46,7 +46,8 @@ uint32_t get_local_apic_id()
     return apic_id;
 }
 
-static bool validate_apic_ids(const std::vector<uint32_t>& slice_ids)
+// Given a set of 0-based CPU IDs, validate and translate them to host APIC IDs.
+static bool translate_apic_ids(std::vector<uint32_t>& slice_ids)
 {
     std::vector<uint32_t> host_ids;
     if (!acpi_get_host_apic_ids(host_ids))
@@ -61,22 +62,33 @@ static bool validate_apic_ids(const std::vector<uint32_t>& slice_ids)
     }
     std::cout << std::endl;
 
-    assert(std::find(host_ids.begin(), host_ids.end(), bsp_apic_id) != host_ids.end());
+    // Remove the BSP from the list
+    auto it = std::find(host_ids.begin(), host_ids.end(), bsp_apic_id);
+    assert(it != host_ids.end());
+    host_ids.erase(it);
 
-    // Check that the slice IDs are valid, and not duplicated.
-    for (uint32_t id : slice_ids) {
-        if (id == bsp_apic_id) {
-            fprintf(stderr, "Error: APIC ID %u is the BSP\n", id);
+    // Check that the slice IDs are valid, and not duplicated, and translate them.
+    for (uint32_t& id : slice_ids) {
+        if (id == 0 || id > host_ids.size()) {
+            fprintf(stderr, "Error: CPU %u is unavailable\n", id);
             return false;
         }
-        assert(id != UINT32_MAX);
-        auto it = std::find(host_ids.begin(), host_ids.end(), id);
-        if (it == host_ids.end()) {
-            fprintf(stderr, "Error: APIC ID %u duplicated or not present\n", id);
+        uint32_t apic_id = host_ids[id - 1];
+        host_ids[id - 1] = UINT32_MAX;
+        if (apic_id == UINT32_MAX) {
+            fprintf(stderr, "Error: CPU %u was used twice\n", id);
             return false;
         }
-        *it = UINT32_MAX; // mark invalid to catch duplicates
+        // translate to APIC ID
+        id = apic_id;
     }
+
+    // Print the translated slice APIC IDs.
+    std::cout << "Slice APIC IDs: ";
+    for (uint32_t id : slice_ids) {
+        std::cout << id << " ";
+    }
+    std::cout << std::endl;
 
     return true;
 }
@@ -96,25 +108,49 @@ void Options::validate()
     if (lowmem % 0x1000 != 0)
         usage("Low memory must be page-aligned");
     if (apic_ids.empty())
-        usage("APIC IDs are required");
-    if (!validate_apic_ids(apic_ids))
-        usage("Invalid APIC IDs");
+        usage("CPU IDs are required");
+    if (!translate_apic_ids(apic_ids))
+        usage("Invalid CPU IDs");
 }
 
-static void parse_cpus(const char* str, std::vector<uint32_t>& apic_ids)
+static void parse_cpus(const char* str, std::vector<uint32_t>& cpu_ids)
 {
-    apic_ids.clear();
+    cpu_ids.clear();
 
-    char* end;
-    for (const char* p = str; *p; p++) {
-        if (*p == ',') {
-            apic_ids.push_back(strtoul(str, &end, 0));
-            assert(end == p);
+    while (*str != '\0')
+    {
+        char* end;
+        uint32_t val = strtoul(str, &end, 0);
+        if (end == str)
+            usage("Invalid CPU ID range");
+
+        cpu_ids.push_back(val);
+
+        if (*end == '\0')
+        {
+            break;
+        }
+        else if (*end == ',')
+        {
             str = end + 1;
         }
-    }
+        else if (*end == '-')
+        {
+            str = end + 1;
+            uint32_t range_end = strtoul(str, &end, 0);
+            if (end == str || range_end <= val)
+                usage("Invalid CPU ID range");
 
-    apic_ids.push_back(strtoul(str, &end, 0));
+            for (uint32_t i = val + 1; i <= range_end; i++)
+                cpu_ids.push_back(i);
+
+            str = end;
+        }
+        else
+        {
+            usage("Invalid CPU ID range");
+        }
+    }
 }
 
 static void parse_args(int argc, const char* argv[], Options& options)

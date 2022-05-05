@@ -19,16 +19,6 @@ DefinitionBlock (
       Name(_UID,1)
     }
 
-    // Serial console
-    Device(SER0)
-    {
-      Name(_HID, EisaId("PNP0501")) // 16550A-compatible
-      Name(_STA, 0xf)
-      Name(_CRS, ResourceTemplate() {
-        IO(Decode16,0x3000,0x3000,1,8)
-      })
-    }
-
     // PCI host
     Device(PCI0)
     {

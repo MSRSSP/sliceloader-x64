@@ -3,14 +3,30 @@
 # PCI segment number (of everything)
 PCI_SEG=0000
 
+# PCIe serial port to be used as console
+PCI_SERIAL_CONSOLE=04:00.0
+
 # Non-SR-IOV PCI devices/functions to assign
-PCI_ASSIGN="04:00.0"
+PCI_ASSIGN="$PCI_SERIAL_CONSOLE"
 
 # host PF for SR-IOV -- we'll construct and use a single VF
 SRIOV_HOST="05:00.1"
 
 # MAC address for the VF
 VF_MACADDR="02:22:33:44:55:66"
+
+# find the IO port occupied by the serial console
+sysfsdir=/sys/bus/pci/devices/$PCI_SEG:$PCI_SERIAL_CONSOLE
+read class < $sysfsdir/class
+if [ "$class" != "0x070002" ]; then
+  echo "Error: $PCI_SERIAL_CONSOLE is not a 16550 serial port"
+  exit 1
+fi
+read SERIAL_IOPORT_BASE SERIAL_IOPORT_LIMIT flags < $sysfsdir/resource
+if (( (flags >> 8 & 0xff) != 1 )); then
+  echo "Error: $PCI_SERIAL_CONSOLE doesn't implement an I/O port resource"
+  exit 1
+fi
 
 # Create SR-IOV virtual function
 sysfsdir=/sys/bus/pci/devices/$PCI_SEG:$SRIOV_HOST
@@ -71,7 +87,7 @@ for dev in $PCI_ASSIGN; do
 done
 
 CMDLINE="loglevel=7 noapic apic=debug"
-CMDLINE="$CMDLINE console=uart,io,0x3000,115200n8"
+CMDLINE="$CMDLINE console=uart,io,$SERIAL_IOPORT_BASE,115200n8"
 CMDLINE="$CMDLINE pci=nobios,norom,nobar,realloc=off,permit_probe_only=$probe_only_arg"
 CMDLINE="$CMDLINE pci-vf-as-pf.pf=$SRIOV_HOST pci-vf-as-pf.vf=0"
 

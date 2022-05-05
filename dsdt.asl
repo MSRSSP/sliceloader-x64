@@ -84,14 +84,5 @@ DefinitionBlock (
             ,,,)
       })
     }
-
-    // Reserved resources
-    Device (RES)
-    {
-      Name (_HID, EisaId ("PNP0C02"))
-      Name (_CRS, ResourceTemplate() {
-        Memory32Fixed(ReadWrite,0xe0000000,0x10000000,) // PCIe MCFG region
-      })
-    }
   }
 }

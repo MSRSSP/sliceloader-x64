@@ -1,5 +1,5 @@
 DefinitionBlock (
-  "dsdt.aml",
+  "",
   "DSDT",
   0x02,         // Table revision
   "SLICER",     // OEM ID
@@ -94,39 +94,6 @@ DefinitionBlock (
             ,,,)
       })
     }
-
-    // PCIe port
-    // 00:01.0 PCI bridge: Intel Corporation Xeon E3-1200 v5/E3-1500 v5/6th Gen Core Processor PCIe Controller (x16) (rev 05) (prog-if 00 [Normal decode])
-    // Bus: primary=00, secondary=01, subordinate=01, sec-latency=0
-    // I/O behind bridge: [disabled]
-    // Memory behind bridge: be800000-be8fffff [size=1M]
-    // Prefetchable memory behind bridge: 0000001c06000000-0000001c068fffff [size=9M]
-    // Device(PCI0)
-    // {
-    //   Name(_HID, EisaId("PNP0A08"))
-    //   Name(_SEG, 0)
-    //   Name(_ADR, 0x00000000)
-    //   Name(_BBN, 1)
-    //   Name(_CRS, ResourceTemplate() {
-    //     ExtendedMemory(ResourceProducer,PosDecode,MinFixed,MaxFixed,NonCacheable,
-    //       ReadWrite,0x0,0xbe800000,0xbe8fffff,0x0,0x100000,,,)
-    //     ExtendedMemory(ResourceProducer,PosDecode,MinFixed,MaxFixed,Prefetchable,
-    //       ReadWrite,0x0,0x1c06000000,0x1c068fffff,0x0,0x900000,,,)
-    //   })
-    // }
-
-    // Device(ETH0)
-    // {
-    //   Name(_HID, "ACPI0004") // Module device
-    //   Name(_CID, Package(){"PCI\\VEN_8086&DEV_1528"})
-    //   Name(_ADR, 0x0000ffff)
-    //   Name(_CRS, ResourceTemplate() {
-    //     ExtendedMemory(ResourceProducer,PosDecode,MinFixed,MaxFixed,NonCacheable,
-    //       ReadWrite,0x0,0xbe800000,0xbe8fffff,0x0,0x100000,,,)
-    //     ExtendedMemory(ResourceProducer,PosDecode,MinFixed,MaxFixed,Prefetchable,
-    //       ReadWrite,0x0,0x1c06000000,0x1c068fffff,0x0,0x900000,,,)
-    //   })
-    // }
 
     // Reserved resources
     Device (RES)

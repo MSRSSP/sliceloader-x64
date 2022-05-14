@@ -9,8 +9,11 @@ PCI_SERIAL_CONSOLE=21:00.0
 # Non-SR-IOV PCI devices/functions to assign
 PCI_ASSIGN="$PCI_SERIAL_CONSOLE"
 
-# host PF for SR-IOV -- we'll construct and use a single VF
-SRIOV_HOST="99:00.0"
+# host PF for SR-IOV NIC -- we'll construct and use a single VF
+SRIOV_NIC_PF="99:00.0"
+
+# host PF for SR-IOV NVME
+SRIOV_NVME_PF="8d:00.0"
 
 # MAC address for the VF
 VF_MACADDR="02:22:33:44:55:66"
@@ -28,41 +31,40 @@ if (( (flags >> 8 & 0xff) != 1 )); then
   exit 1
 fi
 
-# Create SR-IOV virtual function
-sysfsdir=/sys/bus/pci/devices/$PCI_SEG:$SRIOV_HOST
-if [ ! -e $sysfsdir/sriov_numvfs ]; then
-  echo "Error: $SRIOV_HOST does not exist or does not support SR-IOV"
-  exit 1
-fi
-
-read numvfs < $sysfsdir/sriov_numvfs
-if [ $numvfs -ne 0 ]; then
-  echo "Error: virtual functions of $SRIOV_HOST already created"
-  exit 1
-fi
-
-# find the network interface name on the host
-ifname=""
-for name in $sysfsdir/net/*; do
-  if [ -d "$name" ]; then
-    ifname=$(basename "$name")
-    break
+# Create SR-IOV virtual function for NIC
+for pf in $SRIOV_NIC_PF $SRIOV_NVME_PF; do
+  sysfsdir=/sys/bus/pci/devices/$PCI_SEG:$pf
+  if [ ! -e $sysfsdir/sriov_numvfs ]; then
+    echo "Error: $SRIOV_NIC_PF does not exist or does not support SR-IOV"
+    exit 1
   fi
+
+  read numvfs < $sysfsdir/sriov_numvfs
+  if [ $numvfs -eq 0 ]; then
+    # find the network interface name on the host
+    ifname=""
+    for name in $sysfsdir/net/*; do
+      if [ -d "$name" ]; then
+        ifname=$(basename "$name")
+        break
+      fi
+    done
+
+    # prevent probing of virtual function drivers, then create a single VF
+    echo -n 0 > $sysfsdir/sriov_drivers_autoprobe
+    echo -n 1 > $sysfsdir/sriov_numvfs
+
+    if [ -n "$ifname" ]; then
+      echo "Assigning MAC $VF_MACADDR to $ifname VF 0"
+      ip link set $ifname vf 0 mac $VF_MACADDR
+    fi
+  fi
+
+  # add the virtual function's PCI ID to the list of assigned devices
+  vfnid=$(basename $(readlink $sysfsdir/virtfn0))
+  echo "Created SR-IOV VF $vfnid"
+  PCI_ASSIGN="$PCI_ASSIGN ${vfnid#$PCI_SEG:}"
 done
-
-# prevent probing of virtual function drivers, then create a single VF
-echo -n 0 > $sysfsdir/sriov_drivers_autoprobe
-echo -n 1 > $sysfsdir/sriov_numvfs
-
-if [ -n "$ifname" ]; then
-  echo "Assigning MAC $VF_MACADDR to $ifname VF 0"
-  ip link set $ifname vf 0 mac $VF_MACADDR
-fi
-
-# add the virtual function's PCI ID to the list of assigned devices
-vfnid=$(basename $(readlink $sysfsdir/virtfn0))
-echo "Created SR-IOV VF $vfnid"
-PCI_ASSIGN="$PCI_ASSIGN ${vfnid#$PCI_SEG:}"
 
 # Ensure that all assigned devices exist and are not bound to drivers on the host
 for dev in $PCI_ASSIGN; do
@@ -102,8 +104,8 @@ CMDLINE="$CMDLINE noapic"
 # permit_probe_only: allow-list of configured devices to probe (relies on custom kernel)
 CMDLINE="$CMDLINE pci=nobios,norom,nobar,realloc=off,lastbus=0x100,permit_probe_only=$probe_only_arg"
 
-# instruct our pci-vf-as-pf driver where to find our SR-IOV device, and which VF to use
-CMDLINE="$CMDLINE pci-vf-as-pf.pf=$SRIOV_HOST pci-vf-as-pf.vf=0"
+# instruct our pci-vf-as-pf driver where to find our SR-IOV devices, and which VF to use
+CMDLINE="$CMDLINE pci-vf-as-pf.pf=$SRIOV_NIC_PF,$SRIOV_NVME_PF pci-vf-as-pf.vf=0"
 
 sync; sync; sleep 0.1
 

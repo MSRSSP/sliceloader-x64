@@ -15,8 +15,11 @@ SRIOV_NIC_PF="99:00.0"
 # host PF for SR-IOV NVME
 SRIOV_NVME_PF="8d:00.0"
 
-# MAC address for the VF
-VF_MACADDR="02:22:33:44:55:66"
+# VF instance to use
+SRIOV_VF=0
+
+# base MAC address for the NIC VFs
+NIC_VF_MACADDR_BASE="02:22:33:44:55:66"
 
 # find the IO port occupied by the serial console
 sysfsdir=/sys/bus/pci/devices/$PCI_SEG:$PCI_SERIAL_CONSOLE
@@ -35,34 +38,54 @@ fi
 for pf in $SRIOV_NIC_PF $SRIOV_NVME_PF; do
   sysfsdir=/sys/bus/pci/devices/$PCI_SEG:$pf
   if [ ! -e $sysfsdir/sriov_numvfs ]; then
-    echo "Error: $SRIOV_NIC_PF does not exist or does not support SR-IOV"
+    echo "Error: $pf does not exist or does not support SR-IOV"
     exit 1
   fi
 
   read numvfs < $sysfsdir/sriov_numvfs
   if [ $numvfs -eq 0 ]; then
-    # find the network interface name on the host
     ifname=""
-    for name in $sysfsdir/net/*; do
-      if [ -d "$name" ]; then
-        ifname=$(basename "$name")
-        break
-      fi
-    done
+    nvme_dev=""
+    if [ -d $sysfsdir/net ]; then
+      # find the network interface name on the host
+      for name in $sysfsdir/net/*; do
+        if [ -d "$name" ]; then
+          ifname=$(basename "$name")
+          break
+        fi
+      done
+    elif [ -d $sysfsdir/nvme ]; then
+      for name in $sysfsdir/nvme/*; do
+        if [ -d "$name" ]; then
+          devname=$(basename "$name")
+          break
+        fi
+      done
+      nvme_dev=/dev/$devname
+      nvme_scid=$((SRIOV_VF + 1))
 
-    # prevent probing of virtual function drivers, then create a single VF
+      # assign 2 queues per VF
+      nvme virt-mgmt $nvme_dev -c $nvme_scid -r 0 -n 2 -a 8
+      nvme virt-mgmt $nvme_dev -c $nvme_scid -r 1 -n 2 -a 8
+    fi
+
+    # prevent probing of virtual function drivers, then create all the VFs
     echo -n 0 > $sysfsdir/sriov_drivers_autoprobe
-    echo -n 1 > $sysfsdir/sriov_numvfs
+    cat $sysfsdir/sriov_totalvfs > $sysfsdir/sriov_numvfs
 
     if [ -n "$ifname" ]; then
-      echo "Assigning MAC $VF_MACADDR to $ifname VF 0"
-      ip link set $ifname vf 0 mac $VF_MACADDR
+      mac=$(($(echo 0x$NIC_VF_MACADDR_BASE | tr -d ':') + SRIOV_VF))
+      mac=$(printf "%012x" $mac | sed 's/../&:/g;s/:$//')
+      echo "Assigning MAC $mac to $ifname VF $SRIOV_VF"
+      ip link set $ifname vf $SRIOV_VF mac $mac
+    else
+      nvme virt-mgmt $nvme_dev -c $nvme_scid -a 9
     fi
   fi
 
   # add the virtual function's PCI ID to the list of assigned devices
-  vfnid=$(basename $(readlink $sysfsdir/virtfn0))
-  echo "Created SR-IOV VF $vfnid"
+  vfnid=$(basename $(readlink $sysfsdir/virtfn$SRIOV_VF))
+  echo "Assigning SR-IOV VF $vfnid"
   PCI_ASSIGN="$PCI_ASSIGN ${vfnid#$PCI_SEG:}"
 done
 
@@ -105,9 +128,9 @@ CMDLINE="$CMDLINE noapic"
 CMDLINE="$CMDLINE pci=nobios,norom,nobar,realloc=off,lastbus=0x100,permit_probe_only=$probe_only_arg"
 
 # instruct our pci-vf-as-pf driver where to find our SR-IOV devices, and which VF to use
-CMDLINE="$CMDLINE pci-vf-as-pf.pf=$SRIOV_NIC_PF,$SRIOV_NVME_PF pci-vf-as-pf.vf=0"
+CMDLINE="$CMDLINE pci-vf-as-pf.pf=$SRIOV_NIC_PF,$SRIOV_NVME_PF pci-vf-as-pf.vf=$SRIOV_VF"
 
-sync; sync; sleep 0.1
+sync # lingering paranoia
 
 set -x
 

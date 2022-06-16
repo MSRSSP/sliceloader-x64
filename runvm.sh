@@ -61,6 +61,7 @@ do
     echo "   -v VFID      set virtual function ID to use"
     echo "   -n NODEID    set NUMA node for memory and host CPUs"
     exit 0
+    ;;
 
   *)
     echo "Error: unknown argument: $1"

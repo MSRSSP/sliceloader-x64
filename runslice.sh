@@ -9,7 +9,7 @@ PCI_SERIAL_CONSOLE=21:00.0
 # Non-SR-IOV PCI devices/functions to assign
 PCI_ASSIGN="$PCI_SERIAL_CONSOLE"
 
-# host PF for SR-IOV NIC -- we'll construct and use a single VF
+# host PF for SR-IOV NIC
 SRIOV_NIC_PF="99:00.0"
 
 # host PF for SR-IOV NVME
@@ -114,6 +114,7 @@ done
 # enable plenty of debug output, and configure the console
 CMDLINE="loglevel=7 apic=debug"
 CMDLINE="$CMDLINE console=uart,io,$SERIAL_IOPORT_BASE,115200n8"
+CMDLINE="$CMDLINE root=/dev/nvme0n1p1 ro"
 
 # disable use of the IO-APICs
 CMDLINE="$CMDLINE noapic"
@@ -134,6 +135,7 @@ sync # lingering paranoia
 
 set -x
 
-builddir/runslice -rambase 0x180000000 -ramsize 0x40000000 -cpus 1-2 \
-  -kernel bzImage -initrd rootfs.cpio.gz -dsdt builddir/dsdt.aml \
+# -initrd rootfs.cpio.gz
+builddir/runslice -rambase 0x880000000 -ramsize 0x600000000 -cpus 12-19 \
+  -kernel bzImage -dsdt builddir/dsdt.aml \
   -cmdline "$CMDLINE"

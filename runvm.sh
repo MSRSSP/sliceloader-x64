@@ -2,9 +2,6 @@
 
 source ./run_common.sh
 
-# Non-SR-IOV PCI devices/functions to assign
-PCI_ASSIGN=""
-
 # Default VM parameters
 MEM_GB=$DEFAULT_MEM_GB
 CPUS=$DEFAULT_CPUS
@@ -67,63 +64,11 @@ echo "  Virt Fn ID:    $SRIOV_VF"
 echo "  NUMA node:     $NUMA_NODE"
 
 # Create SR-IOV virtual function for NIC/NVME
-# FIXME: big code dup with runslice.sh
 for pf in $SRIOV_NIC_PF $SRIOV_NVME_PF; do
-  sysfsdir=/sys/bus/pci/devices/$PCI_SEG:$pf
-  if [ ! -e $sysfsdir/sriov_numvfs ]; then
-    echo "Error: $pf does not exist or does not support SR-IOV"
-    exit 1
-  fi
-
-  ifname=""
-  nvme_dev=""
-  if [ -d $sysfsdir/net ]; then
-    # find the network interface name on the host
-    for name in $sysfsdir/net/*; do
-      if [ -d "$name" ]; then
-        ifname=$(basename "$name")
-        break
-      fi
-    done
-  elif [ -d $sysfsdir/nvme ]; then
-    for name in $sysfsdir/nvme/*; do
-      if [ -d "$name" ]; then
-        devname=$(basename "$name")
-        break
-      fi
-    done
-    nvme_dev=/dev/$devname
-    nvme_scid=$((SRIOV_VF + 1)) # TODO: get this from nvme list-secondary
-
-    # assign 2 queues per VF
-    nvme virt-mgmt $nvme_dev -c $nvme_scid -r 0 -n 2 -a 8
-    nvme virt-mgmt $nvme_dev -c $nvme_scid -r 1 -n 2 -a 8
-  fi
-
-  read numvfs < $sysfsdir/sriov_numvfs
-  if [ $numvfs -eq 0 ]; then
-    # prevent probing of virtual function drivers, then create all the VFs
-    echo -n 0 > $sysfsdir/sriov_drivers_autoprobe
-    cat $sysfsdir/sriov_totalvfs > $sysfsdir/sriov_numvfs
-  fi
-
-  if [ -n "$ifname" ]; then
-    mac=$(($(echo 0x$NIC_VF_MACADDR_BASE | tr -d ':') + SRIOV_VF))
-    mac=$(printf "%012x" $mac | sed 's/../&:/g;s/:$//')
-    echo "Assigning MAC $mac to $ifname VF $SRIOV_VF"
-    ip link set $ifname vf $SRIOV_VF mac $mac
-  else
-    nvme virt-mgmt $nvme_dev -c $nvme_scid -a 9
-  fi
-
-  # add the virtual function's PCI ID to the list of assigned devices
-  vfnid=$(basename $(readlink $sysfsdir/virtfn$SRIOV_VF))
-  echo "Assigning SR-IOV VF $vfnid"
-  PCI_ASSIGN="$PCI_ASSIGN $vfnid"
+  setup_sriov $pf
 
   # bind it to vfio-pci
-  sysfsdir=/sys/bus/pci/devices/$vfnid
-  echo vfio-pci > $sysfsdir/driver_override
+  echo vfio-pci > /sys/bus/pci/devices/$vfnid/driver_override
   echo $vfnid >/sys/bus/pci/drivers_probe
 done
 

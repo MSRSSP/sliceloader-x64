@@ -52,13 +52,14 @@ function setup_sriov {
       fi
     done
     nvme_dev=/dev/$devname
-    local nvme_scid=$((SRIOV_VF + 1)) # TODO: get this from nvme list-secondary
 
     if [ $numvfs -eq 0 ]; then
+      # XXX: assign VQ & VI resources for the first 4 controllers, before enabling any
+      # 9 is the limit per $(sudo nvme primary-ctrl-caps /dev/nvme0)
+      local nres=2 # 9
       for i in $(seq 1 4); do
-        # assign 2 queues per VF
-        nvme virt-mgmt $nvme_dev -c $i -r 0 -n 2 -a 8
-        nvme virt-mgmt $nvme_dev -c $i -r 1 -n 2 -a 8
+        nvme virt-mgmt $nvme_dev -c $i -r 0 -n $nres -a 8
+        nvme virt-mgmt $nvme_dev -c $i -r 1 -n $nres -a 8
       done
     fi
   fi
@@ -75,6 +76,7 @@ function setup_sriov {
     echo "Assigning MAC $mac to $ifname VF $SRIOV_VF"
     ip link set $ifname vf $SRIOV_VF mac $mac
   else
+    local nvme_scid=$((SRIOV_VF + 1)) # TODO: get this from nvme list-secondary
     nvme virt-mgmt $nvme_dev -c $nvme_scid -a 9
   fi
 

@@ -1,10 +1,14 @@
 #!/bin/bash -e
 
+IMAGE_URL=https://cloud-images.ubuntu.com/releases/jammy/release/ubuntu-22.04-server-cloudimg-amd64-root.tar.xz
+
 # This script partitions and formats a block device, then installs and configures an Ubuntu cloud image.
 if [[ $# != 1 || ! -b "$1" ]]; then
     echo "Usage: $0 <block device>" > /dev/stderr
     exit 1
 fi
+
+dev=$1
 
 resdir=$(dirname -- "$BASH_SOURCE")
 cloudcfg="$resdir/cloud.cfg"
@@ -19,7 +23,7 @@ if [[ ! -f "$extramodules" ]]; then
     exit 1
 fi
 
-dev=$1
+image=$(basename "$IMAGE_URL")
 
 # Create a GPT with a single Linux root partition covering the entire volume
 sfdisk $dev <<END
@@ -42,7 +46,16 @@ mkfs.ext4 -L cloudimg-rootfs $partdev
 
 mount $partdev $mountpoint
 
-curl https://cloud-images.ubuntu.com/releases/jammy/release/ubuntu-22.04-server-cloudimg-amd64-root.tar.xz | tar -xJ -C $mountpoint
+# allow for partial downloads
+if [[ -f "$image" ]]; then
+  curlopt="-C -"
+else
+  curlopt=""
+fi
+
+curl "$IMAGE_URL" $curlopt -o "$resdir/$image"
+
+tar -xJ -C "$mountpoint" < "$resdir/$image"
 
 tar -xJf "$extramodules" -C "$mountpoint/lib/modules"
 

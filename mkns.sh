@@ -1,7 +1,8 @@
 #!/bin/bash -e
 
-# This script creates an NVMe namespace, attaches it to the host, formats it with a new image, then
-# attaches it to a specified secondary controller.
+# This script creates an NVMe namespace, formats it with a new image, then attaches it to a 
+# specified secondary controller. It can't tell whether there is already a namespace attached 
+# to that controller. If there is, you probably want to remove it first with nvme delete-ns.
 
 # defaults
 NVME_DEV=/dev/nvme0
@@ -65,7 +66,7 @@ fi
 HOST_CNTLID=$(nvme id-ctrl $NVME_DEV -o json | jq .cntlid)
 
 # Get the ID of the secondary (virtual function) controller
-VIRT_CNTLID=$(nvme list-secondary /dev/nvme0 -o json | jq '."secondary-controllers"[]|select(."virtual-function-number"=='$((VFNID + 1))')."secondary-controller-identifier"')
+VIRT_CNTLID=$(nvme list-secondary $NVME_DEV -o json | jq '."secondary-controllers"[]|select(."virtual-function-number"=='$((VFNID + 1))')."secondary-controller-identifier"')
 
 SIZE_BLOCKS=$((SIZE_GB * 1000000000 / BLOCK_SIZE))
 
@@ -87,16 +88,18 @@ echo "Created namespace $NSID"
 nvme attach-ns $NVME_DEV -n $NSID -c $HOST_CNTLID
 
 # Wait for the namespace to populate
-while [[ $(nvme id-ns $NVME_DEV -n $NSID -o json | jq .nsze) -eq 0 ]]; do
+while true; do
+    NSDEV=$(nvme list -o json | jq -r ".Devices[]|select(.NameSpace==$NSID).DevicePath")
+    if [ -n "$NSDEV" ]; then
+        break
+    fi
+
     echo -n .
     sleep 1
     nvme ns-rescan $NVME_DEV
 done
 
 set -x
-
-# Figure out the host device path
-NSDEV=$(nvme list -o json | jq -r ".Devices[]|select(.NameSpace==$NSID).DevicePath")
 
 # Partition/format/image the new namespace
 $(dirname "$BASH_SOURCE")/mkimage.sh $NSDEV

@@ -31,7 +31,7 @@ do
     SRIOV_VF="$2"
     shift
     ;;
-  
+
   -n)
     NUMA_NODE="$2"
     shift
@@ -63,16 +63,7 @@ echo "  EPT page size: $HUGEPAGE_MB MiB"
 echo "  Virt Fn ID:    $SRIOV_VF"
 echo "  NUMA node:     $NUMA_NODE"
 
-# Create SR-IOV virtual function for NIC/NVME
-for pf in $SRIOV_NIC_PF $SRIOV_NVME_PF; do
-  setup_sriov $pf
-
-  # bind it to vfio-pci
-  echo vfio-pci > /sys/bus/pci/devices/$vfnid/driver_override
-  echo $vfnid >/sys/bus/pci/drivers_probe
-done
-
-KCMD="console=ttyS0 root=/dev/nvme0n1p1 ro"
+KCMD="console=ttyS0 root=/dev/nvme0n1p1 ro ds=nocloud"
 
 CMD="qemu-system-x86_64 \
  -machine q35,usb=off \
@@ -119,8 +110,13 @@ CMD="$CMD -display none -nodefaults \
  -device isa-serial,chardev=char0,id=serial0 \
  -mon chardev=char0,mode=readline"
 
-for dev in $PCI_ASSIGN; do
-  CMD="$CMD -device vfio-pci,host=$dev"
+
+# Create SR-IOV virtual function for NIC/NVME
+for vfnid in $(setup_sriov_nic $SRIOV_NIC_PF $SRIOV_VF) $(setup_sriov_nvme $SRIOV_NVME_PF $SRIOV_VF); do
+  # bind to vfio-pci
+  echo vfio-pci > /sys/bus/pci/devices/$vfnid/driver_override
+  echo $vfnid >/sys/bus/pci/drivers_probe
+  CMD="$CMD -device vfio-pci,host=$vfnid"
 done
 
 set -x

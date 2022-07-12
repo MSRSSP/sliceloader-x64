@@ -1,13 +1,12 @@
 #!/bin/bash -e
 
 source ./run_common.sh
+source ./run_config.sh
 
 # Default parameters
 MEM_GB=$DEFAULT_MEM_GB
 CPUS=$DEFAULT_CPUS
-
-# PCIe serial ports to be used as consoles
-PCI_SERIAL_CONSOLES=( 0000:21:00.0 0000:22:00.0 0000:22:00.1 )
+SRIOV_VF=0
 
 # Parse arguments
 while [[ $# -gt 0 ]]

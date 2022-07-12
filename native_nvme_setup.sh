@@ -2,6 +2,7 @@
 
 # This script configures virtual functions in the host, to try to mimic their performance in guests.
 source ./run_common.sh
+source ./run_config.sh
 
 #
 # Setup the NIC
@@ -30,11 +31,13 @@ ifconfig $ifname_phys down
 #
 # Setup NVME
 #
+VAR_LIB_DOCKER_NS=2 # nvme namespace containing the filesystem for /var/lib/docker
 service docker stop
 if grep -q /var/lib/docker /proc/mounts; then
   umount /var/lib/docker
-  if nvme detach-ns /dev/nvme0 -n 2 -c 0x41; then
-    nvme attach-ns /dev/nvme0 -n 2 -c 1
+  # detach from primary, attach to first secondary controller
+  if nvme detach-ns /dev/nvme0 -n $VAR_LIB_DOCKER_NS -c 0x41; then
+    nvme attach-ns /dev/nvme0 -n $VAR_LIB_DOCKER_NS -c 1
   fi
 fi
 

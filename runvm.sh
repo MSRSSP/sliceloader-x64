@@ -1,12 +1,14 @@
 #!/bin/bash -e
 
 source ./run_common.sh
+source ./run_config.sh
 
 # Default VM parameters
 MEM_GB=$DEFAULT_MEM_GB
 CPUS=$DEFAULT_CPUS
 HUGEPAGE_MB=0
 NUMA_NODE=1
+SRIOV_VF=0
 
 # Parse arguments
 while [[ $# -gt 0 ]]

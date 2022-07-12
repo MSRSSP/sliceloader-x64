@@ -105,7 +105,7 @@ done
 CMDLINE=""
 #CMDLINE="$CMDLINE loglevel=7 apic=debug"
 CMDLINE="$CMDLINE console=uart,io,$SERIAL_IOPORT_BASE,115200n8"
-CMDLINE="$CMDLINE root=/dev/nvme0n1p1 ro"
+CMDLINE="$CMDLINE root=LABEL=cloudimg-rootfs ro"
 
 # magic to enable cloud-init on first boot
 CMDLINE="$CMDLINE ds=nocloud"

@@ -63,7 +63,7 @@ echo "  EPT page size: $HUGEPAGE_MB MiB"
 echo "  Virt Fn ID:    $SRIOV_VF"
 echo "  NUMA node:     $NUMA_NODE"
 
-KCMD="console=ttyS0 root=/dev/nvme0n1p1 ro ds=nocloud"
+KCMD="console=ttyS0 root=LABEL=cloudimg-rootfs ro ds=nocloud"
 
 CMD="qemu-system-x86_64 \
  -machine q35,usb=off \

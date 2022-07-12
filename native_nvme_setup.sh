@@ -31,7 +31,12 @@ ifconfig $ifname_phys down
 # Setup NVME
 #
 service docker stop
-if mount | grep -q /var/lib/docker; then umount /var/lib/docker; fi
+if grep -q /var/lib/docker /proc/mounts; then
+  umount /var/lib/docker
+  if nvme detach-ns /dev/nvme0 -n 2 -c 0x41; then
+    nvme attach-ns /dev/nvme0 -n 2 -c 1
+  fi
+fi
 
 vfnid=$(setup_sriov_nvme $SRIOV_NVME_PF 0)
 

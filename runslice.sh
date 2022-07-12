@@ -147,5 +147,6 @@ set -x
 builddir/runslice -rambase $RAM_PHYS_BASE \
   -ramsize $((MEM_GB * 0x40000000)) \
   -cpus $CORE_BASE-$((CORE_BASE + CPUS - 1)) \
-  -kernel bzImage -dsdt builddir/dsdt.aml \
+  -kernel vmlinuz -initrd initrd.img \
+  -dsdt builddir/dsdt.aml \
   -cmdline "$CMDLINE"

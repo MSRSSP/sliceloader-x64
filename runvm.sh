@@ -120,5 +120,5 @@ for vfnid in $(setup_sriov_nic $SRIOV_NIC_PF $SRIOV_VF) $(setup_sriov_nvme $SRIO
 done
 
 set -x
-numactl -N $NUMA_NODE $CMD -kernel bzImage -append "$KCMD"
+numactl -N $NUMA_NODE $CMD -kernel vmlinuz -initrd initrd.img -append "$KCMD"
 tput smam

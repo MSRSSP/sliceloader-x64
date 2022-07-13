@@ -4,7 +4,6 @@
 IMAGE_URL=https://cloud-images.ubuntu.com/releases/jammy/release-20220712/ubuntu-22.04-server-cloudimg-amd64-root.tar.xz
 
 # local packages to install on top
-EXTRA_PACKAGE_DIR="$PWD/.."
 EXTRA_PACKAGES=( \
     linux-hwe-5.17-tools-5.17.0-8_5.17.0-8.8~22.04.5_amd64.deb \
     linux-hwe-5.17-tools-common_5.17.0-8.8~22.04.5_all.deb \
@@ -30,11 +29,12 @@ fi
 
 declare -a extra_packages
 for p in "${EXTRA_PACKAGES[@]}"; do
-    if [[ ! -f "$EXTRA_PACKAGE_DIR/$p" ]]; then
-        echo "Error: can't find $p in $EXTRA_PACKAGE_DIR" > /dev/stderr
+    pkg="$resdir/external/guest-linux/$p"
+    if [[ ! -f "$pkg" ]]; then
+        echo "Error: can't find $pkg" > /dev/stderr
         exit 1
     fi
-    extra_packages+=("$EXTRA_PACKAGE_DIR/$p")
+    extra_packages+=("$pkg")
 done
 
 # get image, allowing to resume partial downloads

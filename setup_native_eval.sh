@@ -53,6 +53,6 @@ echo $vfnid > /sys/bus/pci/drivers_probe
 
 sleep 1
 
-mount /dev/nvme0n2p1 /var/lib/docker
+mount /var/lib/docker
 
 service docker start

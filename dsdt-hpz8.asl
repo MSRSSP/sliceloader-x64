@@ -19,10 +19,10 @@ DefinitionBlock (
       Name(_UID,1)
     }
 
-    // pci_bus 0000:20: root bus resource [bus 20-2b]
     // pci_bus 0000:20: root bus resource [io  0x6000-0x7fff window]
     // pci_bus 0000:20: root bus resource [mem 0xab000000-0xb87fffff window]
     // pci_bus 0000:20: root bus resource [mem 0x388000000000-0x38bfffffffff window]
+    // pci_bus 0000:20: root bus resource [bus 20-2b]
     Device(PCI0)
     {
       Name(_HID, EisaId("PNP0A08"))
@@ -50,7 +50,7 @@ DefinitionBlock (
             0x00000000,         // Translation Offset
             0x0d800000,         // Length
             ,, , AddressRangeMemory, TypeStatic)
-        ExtendedMemory (ResourceProducer, PosDecode, MinFixed, MaxFixed, Prefetchable, ReadWrite,
+        ExtendedMemory (ResourceProducer, PosDecode, MinFixed, MaxFixed, NonCacheable, ReadWrite,
             0x0,
             0x388000000000,
             0x38bfffffffff,
@@ -60,10 +60,10 @@ DefinitionBlock (
       })
     }
 
-    // pci_bus 0000:8c: root bus resource [bus 8c-97]
     // pci_bus 0000:8c: root bus resource [io  0xa000-0xbfff window]
     // pci_bus 0000:8c: root bus resource [mem 0xd3800000-0xe0ffffff window]
     // pci_bus 0000:8c: root bus resource [mem 0x394000000000-0x397fffffffff window]
+    // pci_bus 0000:8c: root bus resource [bus 8c-97]
     Device(PCI1)
     {
       Name(_HID, EisaId("PNP0A08"))
@@ -91,7 +91,7 @@ DefinitionBlock (
             0x00000000,         // Translation Offset
             0x0d800000,         // Length
             ,, , AddressRangeMemory, TypeStatic)
-        ExtendedMemory (ResourceProducer, PosDecode, MinFixed, MaxFixed, Prefetchable, ReadWrite,
+        ExtendedMemory (ResourceProducer, PosDecode, MinFixed, MaxFixed, NonCacheable, ReadWrite,
             0x0,
             0x394000000000,
             0x397fffffffff,
@@ -101,10 +101,10 @@ DefinitionBlock (
       })
     }
 
-    // pci_bus 0000:98: root bus resource [bus 98-a3]
     // pci_bus 0000:98: root bus resource [io  0xc000-0xdfff window]
     // pci_bus 0000:98: root bus resource [mem 0xe1000000-0xee7fffff window]
     // pci_bus 0000:98: root bus resource [mem 0x398000000000-0x39bfffffffff window]
+    // pci_bus 0000:98: root bus resource [bus 98-a3]
     Device(PCI2)
     {
       Name(_HID, EisaId("PNP0A08"))
@@ -132,7 +132,7 @@ DefinitionBlock (
             0x00000000,         // Translation Offset
             0x0d800000,         // Length
             ,, , AddressRangeMemory, TypeStatic)
-        ExtendedMemory (ResourceProducer, PosDecode, MinFixed, MaxFixed, Prefetchable, ReadWrite,
+        ExtendedMemory (ResourceProducer, PosDecode, MinFixed, MaxFixed, NonCacheable, ReadWrite,
             0x0,
             0x398000000000,
             0x39bfffffffff,

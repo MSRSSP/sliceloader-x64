@@ -360,7 +360,7 @@ can be run on the host to mimic the guest configuration of these devices.
 
 ## Notes on NVMe configuration
 
-The `nvme` utility is unforgiving, and poorly documented. Here's some tips:
+The `nvme` utility is unforgiving and poorly documented. Here are some tips:
 
  * Documentation: the [NVMe spec](https://nvmexpress.org/developers/nvme-specification/) is the
    best reference (especially for all the acronyms), but see also:

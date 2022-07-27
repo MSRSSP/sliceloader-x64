@@ -95,15 +95,21 @@ case $HUGEPAGE_MB in
 esac
 
 # https://www.kernel.org/doc/html/latest/admin-guide/mm/hugetlbpage.html#interaction-of-task-memory-policy-with-huge-page-allocation-freeing
-for f in /sys/kernel/mm/hugepages/hugepages-*/nr_hugepages; do
-  echo 0 > $f
+# Free all huge page sizes *other* than the size we need (because they might be used by concurrently running VMs).
+SYSFS_HUGEPAGE_PATH=/sys/kernel/mm/hugepages/hugepages-$((HUGEPAGE_MB * 1024))kB
+for d in /sys/kernel/mm/hugepages/hugepages-*; do
+  if [[ $d != $SYSFS_HUGEPAGE_PATH ]]; then
+    echo 0 > $d/nr_hugepages
+  fi
 done
 
 CMD="$CMD -m $((MEM_GB * 1024)) -mem-prealloc -overcommit mem-lock=on"
 
 if [ -n "$HUGEPAGE_PATH" ]; then
+  # XXX: allocate for a number of huge pages scaled according to the VF ID
+  # This assumes that VMs are started in order (VF 0, then VF 1, etc.) so each time we allocate more
   echo "(Re)allocating huge pages on node $NUMA_NODE"
-  numactl -m $NUMA_NODE echo $((MEM_GB * 1024 / HUGEPAGE_MB)) > /sys/kernel/mm/hugepages/hugepages-$((HUGEPAGE_MB * 1024))kB/nr_hugepages_mempolicy
+  numactl -m $NUMA_NODE echo $(((SRIOV_VF + 1) * MEM_GB * 1024 / HUGEPAGE_MB)) > $SYSFS_HUGEPAGE_PATH/nr_hugepages_mempolicy
   CMD="$CMD -mem-path $HUGEPAGE_PATH"
 fi
 
